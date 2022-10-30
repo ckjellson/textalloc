@@ -1,2 +1,5 @@
 # textalloc
-Allocates text labels in matplotlib
+
+![scattertext example](images/scattertext.png "scattertext example")
+
+Allocates text labels efficiently in matplotlib plots.
