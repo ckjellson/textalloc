@@ -4,24 +4,17 @@ import numpy as np
 def non_overlapping_with_points(
     scatter_xy: np.ndarray, candidates: np.ndarray, xfrac: float, yfrac: float
 ) -> np.ndarray:
-    # """
-    # Parameters
-    # ----------
-    # pointarr : np.ndarray
-    #     Array of shape (N,2) containing coordinates for all scatter-points
-    # candidates : np.ndarray
-    #     Array of shape (K,4) with K candidate patches
-    # xfrac : float
-    #     fraction of the x-dimension to use as margins for text bboxes
-    # yfrac : float
-    #     fraction of the y-dimension to use as margins for text bboxes
+    """Finds candidates not overlapping with points.
 
-    # Returns
-    # -------
-    # np.array
-    # Boolean array of shape (K,) with True for non-overlapping candidates with points
+    Args:
+        scatter_xy (np.ndarray): Array of shape (N,2) containing coordinates for all scatter-points
+        candidates (np.ndarray): Array of shape (K,4) with K candidate boxes
+        xfrac (float): fraction of the x-dimension to use as margins for text boxes
+        yfrac (float): fraction of the y-dimension to use as margins for text boxes
 
-    # """
+    Returns:
+        np.ndarray: Boolean array of shape (K,) with True for non-overlapping candidates with points
+    """
     return np.invert(
         np.bitwise_or.reduce(
             np.bitwise_and(
@@ -39,33 +32,20 @@ def non_overlapping_with_points(
     )
 
 
-def ccw(x1y1, x2y2, x3y3, cand):
-    if cand:
-        return (
-            (-(x1y1[:, 1][:, None] - x3y3[:, 1]))
-            * np.repeat(x2y2[:, 0:1] - x1y1[:, 0:1], x3y3.shape[0], axis=1)
-        ) > (
-            np.repeat(x2y2[:, 1:2] - x1y1[:, 1:2], x3y3.shape[0], axis=1)
-            * (-(x1y1[:, 0][:, None] - x3y3[:, 0]))
-        )
-    return (
-        (-(x1y1[:, 1][:, None] - x3y3[:, 1])) * (-(x1y1[:, 0][:, None] - x2y2[:, 0]))
-    ) > ((-(x1y1[:, 1][:, None] - x2y2[:, 1])) * (-(x1y1[:, 0][:, None] - x3y3[:, 0])))
-
-
-def line_intersect(cand_xyxy, lines_xyxy):
-    intersects = np.bitwise_and(
-        ccw(cand_xyxy[:, :2], lines_xyxy[:, :2], lines_xyxy[:, 2:], False)
-        != ccw(cand_xyxy[:, 2:], lines_xyxy[:, :2], lines_xyxy[:, 2:], False),
-        ccw(cand_xyxy[:, :2], cand_xyxy[:, 2:], lines_xyxy[:, :2], True)
-        != ccw(cand_xyxy[:, :2], cand_xyxy[:, 2:], lines_xyxy[:, 2:], True),
-    )
-    return intersects
-
-
 def non_overlapping_with_lines(
     lines_xyxy: np.ndarray, candidates: np.ndarray, xfrac: float, yfrac: float
 ) -> np.ndarray:
+    """Finds candidates not overlapping with lines
+
+    Args:
+        lines_xyxy (np.ndarray): line segments
+        candidates (np.ndarray): candidate boxes
+        xfrac (float): fraction of the x-dimension to use as margins for text boxes
+        yfrac (float): fraction of the y-dimension to use as margins for text boxes
+
+    Returns:
+        np.ndarray: Boolean array of shape (K,) with True for non-overlapping candidates with lines.
+    """
     non_intersecting = np.invert(
         np.any(
             np.bitwise_or(
@@ -155,35 +135,74 @@ def non_overlapping_with_lines(
     return np.bitwise_and(non_intersecting, non_inside)
 
 
-def non_overlapping_with_rectangles(rectangle_arr, candidates, xfrac, yfrac):
-    # """
-    # Parameters
-    # ----------
-    # rectangle_arr : np.ndarray
-    #     Array of shape (N,4) containing patches of all added patches so far
-    # candidates : np.ndarray
-    #     Array of shape (K,4) with K candidate patches
-    # xfrac : float
-    #     fraction of the x-dimension to use as margins for text bboxes
-    # yfrac : float
-    #     fraction of the y-dimension to use as margins for text bboxes
+def line_intersect(cand_xyxy: np.ndarray, lines_xyxy: np.ndarray) -> np.ndarray:
+    """Checks if line segments intersect for all line segments and candidates.
 
-    # Returns
-    # -------
-    # np.array
-    # Boolean array of shape (K,) with True for non-overlapping candidates with points
+    Args:
+        cand_xyxy (np.ndarray): line segments in candidates
+        lines_xyxy (np.ndarray): line segments plotted
 
-    # """
+    Returns:
+        np.ndarray: Boolean array with True for non-overlapping candidate segments with line segments.
+    """
+    intersects = np.bitwise_and(
+        ccw(cand_xyxy[:, :2], lines_xyxy[:, :2], lines_xyxy[:, 2:], False)
+        != ccw(cand_xyxy[:, 2:], lines_xyxy[:, :2], lines_xyxy[:, 2:], False),
+        ccw(cand_xyxy[:, :2], cand_xyxy[:, 2:], lines_xyxy[:, :2], True)
+        != ccw(cand_xyxy[:, :2], cand_xyxy[:, 2:], lines_xyxy[:, 2:], True),
+    )
+    return intersects
+
+
+def ccw(x1y1: np.ndarray, x2y2: np.ndarray, x3y3: np.ndarray, cand: bool) -> np.ndarray:
+    """CCW used in line intersect
+
+    Args:
+        x1y1 (np.ndarray):
+        x2y2 (np.ndarray):
+        x3y3 (np.ndarray):
+        cand (bool): using candidate positions (different broadcasting)
+
+    Returns:
+        np.ndarray:
+    """
+    if cand:
+        return (
+            (-(x1y1[:, 1][:, None] - x3y3[:, 1]))
+            * np.repeat(x2y2[:, 0:1] - x1y1[:, 0:1], x3y3.shape[0], axis=1)
+        ) > (
+            np.repeat(x2y2[:, 1:2] - x1y1[:, 1:2], x3y3.shape[0], axis=1)
+            * (-(x1y1[:, 0][:, None] - x3y3[:, 0]))
+        )
+    return (
+        (-(x1y1[:, 1][:, None] - x3y3[:, 1])) * (-(x1y1[:, 0][:, None] - x2y2[:, 0]))
+    ) > ((-(x1y1[:, 1][:, None] - x2y2[:, 1])) * (-(x1y1[:, 0][:, None] - x3y3[:, 0])))
+
+
+def non_overlapping_with_boxes(
+    box_arr: np.ndarray, candidates: np.ndarray, xfrac: float, yfrac: float
+) -> np.ndarray:
+    """Finds candidates not overlapping with allocated boxes.
+
+    Args:
+        box_arr (np.ndarray): array with allocated boxes
+        candidates (np.ndarray): candidate boxes
+        xfrac (float): fraction of the x-dimension to use as margins for text boxes
+        yfrac (float): fraction of the y-dimension to use as margins for text boxes
+
+    Returns:
+        np.ndarray: Boolean array of shape (K,) with True for non-overlapping candidates with boxes.
+    """
     return np.invert(
         np.any(
             np.invert(
                 np.bitwise_or(
-                    candidates[:, 0][:, None] - xfrac > rectangle_arr[:, 2],
+                    candidates[:, 0][:, None] - xfrac > box_arr[:, 2],
                     np.bitwise_or(
-                        candidates[:, 2][:, None] + xfrac < rectangle_arr[:, 0],
+                        candidates[:, 2][:, None] + xfrac < box_arr[:, 0],
                         np.bitwise_or(
-                            candidates[:, 1][:, None] - yfrac > rectangle_arr[:, 3],
-                            candidates[:, 3][:, None] + yfrac < rectangle_arr[:, 1],
+                            candidates[:, 1][:, None] - yfrac > box_arr[:, 3],
+                            candidates[:, 3][:, None] + yfrac < box_arr[:, 1],
                         ),
                     ),
                 )
@@ -193,23 +212,25 @@ def non_overlapping_with_rectangles(rectangle_arr, candidates, xfrac, yfrac):
     )
 
 
-def inside_plot(xmin_bound, ymin_bound, xmax_bound, ymax_bound, candidates):
-    # """
-    # Parameters
-    # ----------
-    # xmin_bound : float
-    # ymin_bound : float
-    # xmax_bound : float
-    # ymax_bound : float
-    # candidates : np.ndarray
-    #     Array of shape (K,4) with K candidate patches
+def inside_plot(
+    xmin_bound: float,
+    ymin_bound: float,
+    xmax_bound: float,
+    ymax_bound: float,
+    candidates: np.ndarray,
+) -> np.ndarray:
+    """Finds candidates that are inside the plot bounds
 
-    # Returns
-    # -------
-    # np.array
-    # Boolean array of shape (K,) with True for non-overlapping candidates with points
+    Args:
+        xmin_bound (float):
+        ymin_bound (float):
+        xmax_bound (float):
+        ymax_bound (float):
+        candidates (np.ndarray): candidate boxes
 
-    # """
+    Returns:
+        np.ndarray: Boolean array of shape (K,) with True for non-overlapping candidates with boxes.
+    """
     return np.invert(
         np.bitwise_or(
             candidates[:, 0] < xmin_bound,

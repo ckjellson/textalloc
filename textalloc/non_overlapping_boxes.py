@@ -1,61 +1,62 @@
 import numpy as np
-from typing import Tuple
+from typing import Tuple, List
 from textalloc.candidates import generate_candidates
 from textalloc.overlap_functions import (
     non_overlapping_with_points,
     non_overlapping_with_lines,
-    non_overlapping_with_rectangles,
+    non_overlapping_with_boxes,
     inside_plot,
 )
 from tqdm import tqdm
 
 
-def get_non_overlapping_patches(
-    original_patches: np.ndarray,
+def get_non_overlapping_boxes(
+    original_boxes: np.ndarray,
     xlims: Tuple[float, float],
     ylims: Tuple[float, float],
     distance_margin_fraction: float,
     verbose: bool,
+    nbr_candidates: int,
     scatter_xy: np.ndarray = None,
     lines_xyxy: np.ndarray = None,
-):
-    # """
-    # Parameters
-    # ----------
-    # original_patches : list
-    #     List of tuples containing width, height and term of each original text-
-    #     box (xmin,ymin,w,h,s) for all N original patches
-    # pointarr : np.ndarray
-    #     Array of shape (N,2) containing coordinates for all scatter-points
-    # xlims : tuple
-    #     (xmin, xmax) of plot
-    # ylims : tuple
-    #     (ymin, ymax) of plot
-    # distance_margin_fraction : float
-    #     Fraction of the 2d space to use as margins for text bboxes
+) -> Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]:
+    """Finds boxes that do not have an overlap with any other objects.
 
-    # Returns
-    # -------
-    # list
-    # List of tuples containing x, y-coordinates and term of each non-overlapping text-
-    # box (xmin,ymin,w,h,s,ind) considering both other patches and the scatterplot-points
+    Args:
+        original_boxes (np.ndarray): original boxes containing texts.
+        xlims (Tuple[float, float]): x-limits of plot gotten from ax.get_ylim()
+        ylims (Tuple[float, float]): y-limits of plot gotten from ax.get_ylim()
+        distance_margin_fraction (float): parameter for margins between objects. Increase for larger margins to points and lines.
+        verbose (bool): prints progress using tqdm.
+        nbr_candidates (int): Sets the number of candidates used.
+        scatter_xy (np.ndarray, optional): 2d array of scattered points in plot. Defaults to None.
+        lines_xyxy (np.ndarray, optional): 2d array of line segments in plot.. Defaults to None.
 
-    # """
+    Returns:
+        Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]: data of non-overlapping boxes and indices of overlapping boxes.
+    """
     xmin_bound, xmax_bound = xlims
     ymin_bound, ymax_bound = ylims
 
     xfrac = (xmax_bound - xmin_bound) * distance_margin_fraction
     yfrac = (ymax_bound - ymin_bound) * distance_margin_fraction
 
-    rectangle_arr = np.zeros((0, 4))
-    non_overlapping_patches = []
+    box_arr = np.zeros((0, 4))
+    non_overlapping_boxes = []
 
-    # Iterate original patches and find ones that do not overlap by creating multiple candidates
-    non_overlapping_patches = []
-    for i, patch in tqdm(enumerate(original_patches), disable=not verbose):
-        x_original, y_original, w, h, s = patch
+    # Iterate original boxes and find ones that do not overlap by creating multiple candidates
+    non_overlapping_boxes = []
+    overlapping_boxes_inds = []
+    for i, box in tqdm(enumerate(original_boxes), disable=not verbose):
+        x_original, y_original, w, h, s = box
         candidates = generate_candidates(
-            w, h, x_original, y_original, xfrac / 2, yfrac / 2
+            w,
+            h,
+            x_original,
+            y_original,
+            xfrac / 2,
+            yfrac / 2,
+            nbr_candidates=nbr_candidates,
         )
 
         # Check for overlapping
@@ -71,11 +72,11 @@ def get_non_overlapping_patches(
             non_ol = non_overlapping_with_lines(
                 lines_xyxy, candidates, xfrac / 2, yfrac / 2
             )
-        if rectangle_arr.shape[0] == 0:
+        if box_arr.shape[0] == 0:
             non_orec = np.zeros((candidates.shape[0],)) == 0
         else:
-            non_orec = non_overlapping_with_rectangles(
-                rectangle_arr, candidates, xfrac / 2, yfrac / 2
+            non_orec = non_overlapping_with_boxes(
+                box_arr, candidates, xfrac / 2, yfrac / 2
             )
         inside = inside_plot(xmin_bound, ymin_bound, xmax_bound, ymax_bound, candidates)
 
@@ -87,9 +88,9 @@ def get_non_overlapping_patches(
         )[0]
         if len(ok_candidates) > 0:
             best_candidate = candidates[ok_candidates[0], :]
-            rectangle_arr = np.vstack(
+            box_arr = np.vstack(
                 [
-                    rectangle_arr,
+                    box_arr,
                     np.array(
                         [
                             best_candidate[0],
@@ -100,7 +101,9 @@ def get_non_overlapping_patches(
                     ),
                 ]
             )
-            non_overlapping_patches.append(
+            non_overlapping_boxes.append(
                 (best_candidate[0], best_candidate[1], w, h, s, i)
             )
-    return non_overlapping_patches
+        else:
+            overlapping_boxes_inds.append(i)
+    return non_overlapping_boxes, overlapping_boxes_inds
