@@ -1,6 +1,6 @@
 # textalloc - Efficient Text Allocation in matplotlib using NumPy Broadcasting
 
-Original|textalloc
+plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/scattertext_before.png)|![](images/scattertext_after.png)
 <div align="center">
@@ -33,7 +33,7 @@ ta.allocate_text(fig, ax, x, y, text_list, ax.get_xlim(), ax.get_ylim(), x_scatt
 plt.show()
 ```
 
-Original|textalloc
+plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/scatter_before.png)|![](images/scatter_after.png)
 
@@ -96,18 +96,18 @@ Original|textalloc
 
 # Implementation and speed
 
-The focus in this implementation is on speed and allocating as many text-boxes as possible into the free space in the plot. This is different to for example the great package adjustText (https://github.com/Phlya/adjustText) which keeps all textboxes and tries to adjust these as optimally as possible (a much harder, but also more computationally expensive problem).
+The focus in this implementation is on speed and allocating as many text-boxes as possible into the free space in the plot. This a more brute force approach than for example adjustText (https://github.com/Phlya/adjustText).
 
 There are three main steps of the algorithm:
 
 For each textbox to be plotted:
-1. Generate a large number of candidate box boxes near the original point with size that matches the fontsize.
-2. Find the candidates that do not overlap any points, lines, plot boundaries, or already allocated boxes.
+1. Generate a large number of candidate boxes near the original point with size that matches the fontsize.
+2. Find the candidates that do not overlap any points, lines, plot boundaries, or already allocated boxes using NumPy broadcasting.
 3. Allocate the text to the first candidate box with no overlaps.
 
 ## Speed
 
-The plot in the top of this Readme was generated in 1.98s on a local laptop, and there are rarely more textboxes that fit into one plot. If the result is still too slow to render, try decreasing `nbr_candidates`.
+The plot in the top of this Readme was generated in 1.98s on a local laptop, and there are rarely more textboxes that fit into one plot. If the result is still too slow to render, try setting `nbr_candidates` lower than 36.
 
 The speed is greatly improved by usage of numpy broadcasting in all functions for computing overlap (see `textalloc/overlap_functions` and `textalloc/find_non_overlapping`). A simple example from the function `non_overlapping_with_boxes` which checks if the candidate boxes (expanded with xfrac, yfrac to provide a margin) overlap with already allocated boxes:
 
@@ -115,7 +115,7 @@ The speed is greatly improved by usage of numpy broadcasting in all functions fo
 candidates[:, 0][:, None] - xfrac > box_arr[:, 2]
 ```
 
-The statement compares xmin coordinates of all candidates with xmax coordinates of all allocated boxes resulting in a matrix of shape (N_candidates, N_allocated) due to the use of indexing `[:, None]`.
+The statement compares xmin coordinates of all candidates with xmax coordinates of all allocated boxes resulting in a boolean matrix of shape (N_candidates, N_allocated) due to the use of indexing `[:, None]`.
 
 # Types of overlap supported
 
@@ -139,13 +139,13 @@ ta.allocate_text(fig, ax, x_line, y_line, text_list, ax.get_xlim(), ax.get_ylim(
 plt.show()
 ```
 
-Original|textalloc
+plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/scatterlines_before.png)|![](images/scatterlines_after.png)
 
 # Improvements
 
-Future improvements:
+Ideas for future improvements:
 
 - Add support for more pyplot objects.
 - Improve allocation when draw_lines=True.
