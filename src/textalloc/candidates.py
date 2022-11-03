@@ -6,8 +6,10 @@ def generate_candidates(
     h: float,
     x: float,
     y: float,
-    xfrac: float,
-    yfrac: float,
+    xmindistance: float,
+    ymindistance: float,
+    xmaxdistance: float,
+    ymaxdistance: float,
     nbr_candidates: int,
 ) -> np.ndarray:
     """Generates 36 candidate boxes
@@ -17,8 +19,10 @@ def generate_candidates(
         h (float): height of box
         x (float): xmin of box
         y (float): ymin of box
-        xfrac (float): fraction of the x-dimension to use as margins for text bboxes
-        yfrac (float): fraction of the y-dimension to use as margins for text bboxes
+        xmindistance (float): fraction of the x-dimension to use as margins for text bboxes
+        ymindistance (float): fraction of the y-dimension to use as margins for text bboxes
+        xmaxdistance (float): fraction of the x-dimension to use as max distance for text bboxes
+        ymaxdistance (float): fraction of the y-dimension to use as max distance for text bboxes
         nbr_candidates (int): nbr of candidates to use. If <1 or >36 uses all 36
 
     Returns:
@@ -26,85 +30,82 @@ def generate_candidates(
     """
     candidates = np.array(
         [
-            [x + xfrac, y + yfrac, x + w + xfrac, y + h + yfrac],  # upper right side
-            [x - w - xfrac, y + yfrac, x - xfrac, y + h + yfrac],  # upper left side
-            [x - w - xfrac, y - h - yfrac, x - xfrac, y - yfrac],  # lower left side
-            [x + xfrac, y - h - yfrac, x + w + xfrac, y - yfrac],  # lower right side
-            [x - w - xfrac, y - h / 2, x - xfrac, y + h / 2],  # left side
-            [x + xfrac, y - h / 2, x + w + xfrac, y + h / 2],  # right side
-            [x - w / 2, y + yfrac, x + w / 2, y + h + yfrac],  # above
-            [x - w / 2, y - h - yfrac, x + w / 2, y - yfrac],  # below
-            [x - 3 * w / 4, y + yfrac, x + w / 4, y + h + yfrac],  # above left
-            [x - w / 4, y + yfrac, x + 3 * w / 4, y + h + yfrac],  # above right
-            [x - 3 * w / 4, y - h - yfrac, x + w / 4, y - yfrac],  # below left
-            [x - w / 4, y - h - yfrac, x + 3 * w / 4, y - yfrac],  # below right
+            [
+                x + xmindistance,
+                y + ymindistance,
+                x + w + xmindistance,
+                y + h + ymindistance,
+            ],  # upper right side
+            [
+                x - w - xmindistance,
+                y + ymindistance,
+                x - xmindistance,
+                y + h + ymindistance,
+            ],  # upper left side
+            [
+                x - w - xmindistance,
+                y - h - ymindistance,
+                x - xmindistance,
+                y - ymindistance,
+            ],  # lower left side
+            [
+                x + xmindistance,
+                y - h - ymindistance,
+                x + w + xmindistance,
+                y - ymindistance,
+            ],  # lower right side
+            [x - w - xmindistance, y - h / 2, x - xmindistance, y + h / 2],  # left side
+            [
+                x + xmindistance,
+                y - h / 2,
+                x + w + xmindistance,
+                y + h / 2,
+            ],  # right side
+            [x - w / 2, y + ymindistance, x + w / 2, y + h + ymindistance],  # above
+            [x - w / 2, y - h - ymindistance, x + w / 2, y - ymindistance],  # below
+            [
+                x - 3 * w / 4,
+                y + ymindistance,
+                x + w / 4,
+                y + h + ymindistance,
+            ],  # above left
+            [
+                x - w / 4,
+                y + ymindistance,
+                x + 3 * w / 4,
+                y + h + ymindistance,
+            ],  # above right
+            [
+                x - 3 * w / 4,
+                y - h - ymindistance,
+                x + w / 4,
+                y - ymindistance,
+            ],  # below left
+            [
+                x - w / 4,
+                y - h - ymindistance,
+                x + 3 * w / 4,
+                y - ymindistance,
+            ],  # below right
             # We move all points a bit further from the target
-            [
-                x + 2 * xfrac,
-                y + 2 * yfrac,
-                x + w + 2 * xfrac,
-                y + h + 2 * yfrac,
-            ],  # upper right side
-            [
-                x - w - 2 * xfrac,
-                y + 2 * yfrac,
-                x - 2 * xfrac,
-                y + h + 2 * yfrac,
-            ],  # upper left side
-            [
-                x - w - 2 * xfrac,
-                y - h - 2 * yfrac,
-                x - 2 * xfrac,
-                y - 2 * yfrac,
-            ],  # lower left side
-            [
-                x + 2 * xfrac,
-                y - h - 2 * yfrac,
-                x + w + 2 * xfrac,
-                y - 2 * yfrac,
-            ],  # lower right side
-            [x - w - 2 * xfrac, y - h / 2, x - 2 * xfrac, y + h / 2],  # left side
-            [x + 2 * xfrac, y - h / 2, x + w + 2 * xfrac, y + h / 2],  # right side
-            [x - w / 2, y + 2 * yfrac, x + w / 2, y + h + 2 * yfrac],  # above
-            [x - w / 2, y - h - 2 * yfrac, x + w / 2, y - 2 * yfrac],  # below
-            [x - 3 * w / 4, y + 2 * yfrac, x + w / 4, y + h + 2 * yfrac],  # above left
-            [x - w / 4, y + 2 * yfrac, x + 3 * w / 4, y + h + 2 * yfrac],  # above right
-            [x - 3 * w / 4, y - h - 2 * yfrac, x + w / 4, y - 2 * yfrac],  # below left
-            [x - w / 4, y - h - 2 * yfrac, x + 3 * w / 4, y - 2 * yfrac],  # below right
-            [
-                x + 3 * xfrac,
-                y + 3 * yfrac,
-                x + w + 3 * xfrac,
-                y + h + 3 * yfrac,
-            ],  # upper right side
-            [
-                x - w - 3 * xfrac,
-                y + 3 * yfrac,
-                x - 3 * xfrac,
-                y + h + 3 * yfrac,
-            ],  # upper left side
-            [
-                x - w - 3 * xfrac,
-                y - h - 3 * yfrac,
-                x - 3 * xfrac,
-                y - 3 * yfrac,
-            ],  # lower left side
-            [
-                x + 3 * xfrac,
-                y - h - 3 * yfrac,
-                x + w + 3 * xfrac,
-                y - 3 * yfrac,
-            ],  # lower right side
-            [x - w - 3 * xfrac, y - h / 2, x - 3 * xfrac, y + h / 2],  # left side
-            [x + 3 * xfrac, y - h / 2, x + w + 3 * xfrac, y + h / 2],  # right side
-            [x - w / 2, y + 3 * yfrac, x + w / 2, y + h + 3 * yfrac],  # above
-            [x - w / 2, y - h - 3 * yfrac, x + w / 2, y - 3 * yfrac],  # below
-            [x - 3 * w / 4, y + 3 * yfrac, x + w / 4, y + h + 3 * yfrac],  # above left
-            [x - w / 4, y + 3 * yfrac, x + 3 * w / 4, y + h + 3 * yfrac],  # above right
-            [x - 3 * w / 4, y - h - 3 * yfrac, x + w / 4, y - 3 * yfrac],  # below left
-            [x - w / 4, y - h - 3 * yfrac, x + 3 * w / 4, y - 3 * yfrac],  # below right
         ]
     )
-    if nbr_candidates > 0 and nbr_candidates < len(candidates):
-        return candidates[:nbr_candidates, :]
+    if nbr_candidates > candidates.shape[0]:
+        candidates2 = np.zeros((nbr_candidates - candidates.shape[0], 4))
+        n_gen = candidates2.shape[0]
+        for i in range(n_gen):
+            frac = i / n_gen
+            x_sample = np.random.uniform(
+                x - frac * xmaxdistance, x + frac * xmaxdistance
+            )
+            y_sample = np.random.uniform(
+                y - frac * ymaxdistance, y + frac * ymaxdistance
+            )
+            candidates2[i, :] = [
+                x_sample - w / 2,
+                y_sample - h / 2,
+                x_sample + w / 2,
+                y_sample + h / 2,
+            ]
+        candidates = np.vstack([candidates, candidates2])
     return candidates

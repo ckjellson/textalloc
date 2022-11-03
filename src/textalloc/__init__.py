@@ -11,19 +11,21 @@ def allocate_text(
     x: Union[np.ndarray, List[float]],
     y: Union[np.ndarray, List[float]],
     text_list: List[str],
-    xlims: Tuple[float, float],
-    ylims: Tuple[float, float],
     x_scatter: Union[np.ndarray, List[float]] = None,
     y_scatter: Union[np.ndarray, List[float]] = None,
     x_lines: List[Union[np.ndarray, List[float]]] = None,
     y_lines: List[Union[np.ndarray, List[float]]] = None,
     textsize: int = 10,
-    distance_margin_fraction: float = 0.015,
+    margin: float = 0.01,
+    min_distance: float = 0.015,
+    max_distance: float = 0.07,
     verbose: bool = False,
-    draw_lines: bool = False,
-    linecolor: str = "k",
-    draw_all: bool = False,
-    nbr_candidates: int = 0,
+    draw_lines: bool = True,
+    linecolor: str = "r",
+    draw_all: bool = True,
+    nbr_candidates: int = 100,
+    linewidth: float = 1,
+    textcolor: str = "k",
 ):
     """Main function of allocating text-boxes in matplotlib plot
 
@@ -33,21 +35,25 @@ def allocate_text(
         x (Union[np.ndarray, List[float]]): x-coordinates of texts 1d array/list.
         y (Union[np.ndarray, List[float]]): y-coordinates of texts 1d array/list.
         text_list (List[str]): list of texts.
-        xlims (Tuple[float, float]): x-limits of plot gotten from ax.get_xlim() (avoids issues with using the function from various interfaces).
-        ylims (Tuple[float, float]): y-limits of plot gotten from ax.get_ylim() (avoids issues with using the function from various interfaces).
         x_scatter (Union[np.ndarray, List[float]], optional): x-coordinates of all scattered points in plot 1d array/list. Defaults to None.
         y_scatter (Union[np.ndarray, List[float]], optional): y-coordinates of all scattered points in plot 1d array/list. Defaults to None.
         x_lines (List[Union[np.ndarray, List[float]]], optional): x-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
         y_lines (List[Union[np.ndarray, List[float]]], optional): y-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
         textsize (int, optional): size of text. Defaults to 10.
-        distance_margin_fraction (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.015.
+        margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.01.
+        min_distance (float, optional): parameter for min distance between text and origin. Defaults to 0.015.
+        max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.07.
         verbose (bool, optional): prints progress using tqdm. Defaults to False.
-        draw_lines (bool, optional): draws lines from original points to textboxes. Defaults to False.
-        linecolor (str, optional): color code of the lines between points and text-boxes. Defaults to "k".
-        draw_all (bool, optional): Draws all texts after allocating as many as possible despit overlap. Defaults to False.
+        draw_lines (bool, optional): draws lines from original points to textboxes. Defaults to True.
+        linecolor (str, optional): color code of the lines between points and text-boxes. Defaults to "r".
+        draw_all (bool, optional): Draws all texts after allocating as many as possible despit overlap. Defaults to True.
         nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 0.
+        linewidth (float, optional): width of line. Defaults to 1.
+        textcolor (str, optional): color code of the text. Defaults to "k".
     """
     t0 = time.time()
+    xlims = ax.get_xlim()
+    ylims = ax.get_ylim()
 
     # Ensure good inputs
     assert len(x) == len(y)
@@ -69,6 +75,8 @@ def allocate_text(
         )
         x_lines = [np.array(x_line) for x_line in x_lines]
         y_lines = [np.array(y_line) for y_line in y_lines]
+    assert min_distance < max_distance
+    assert min_distance > margin
 
     # Create boxes in original plot
     if verbose:
@@ -98,9 +106,12 @@ def allocate_text(
         original_boxes,
         xlims,
         ylims,
-        distance_margin_fraction,
+        margin,
+        min_distance,
+        max_distance,
         verbose,
         nbr_candidates,
+        draw_all,
         scatter_xy=scatterxy,
         lines_xyxy=lines_xyxy,
     )
@@ -108,18 +119,21 @@ def allocate_text(
     # Plot once again
     if verbose:
         print("Plotting")
-    for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
-        ax.text(x_coord, y_coord, s, size=textsize)
-        if draw_lines:
+    if draw_lines:
+        for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
             x_near, y_near = find_nearest_point_on_box(
                 x_coord, y_coord, w, h, x[ind], y[ind]
             )
             if x_near is not None:
-                ax.plot([x[ind], x_near], [y[ind], y_near], linewidth=1, c=linecolor)
+                ax.plot(
+                    [x[ind], x_near], [y[ind], y_near], linewidth=linewidth, c=linecolor
+                )
+    for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
+        ax.text(x_coord, y_coord, s, size=textsize, c=textcolor)
 
     if draw_all:
         for ind in overlapping_boxes_inds:
-            ax.text(x[ind], y[ind], text_list[ind], size=textsize)
+            ax.text(x[ind], y[ind], text_list[ind], size=textsize, c=textcolor)
 
     if verbose:
         print(f"Finished in {time.time()-t0}s")

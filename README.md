@@ -1,6 +1,6 @@
 # textalloc - Efficient Text Allocation in matplotlib using NumPy Broadcasting
 
-plt.text|textalloc
+plt.text|textalloc (2.1s)
 :-------------------------:|:-------------------------:
 ![](images/scattertext_before.png)|![](images/scattertext_after.png)
 <div align="center">
@@ -29,7 +29,10 @@ x, y = np.random.random((2,30))
 fig, ax = plt.subplots()
 ax.scatter(x, y, c='b')
 text_list = [f'Text{i}' for i in range(len(x))]
-ta.allocate_text(fig, ax, x, y, text_list, ax.get_xlim(), ax.get_ylim(), x_scatter=x, y_scatter=y, draw_lines=True, distance_margin_fraction=0.025)
+ta.allocate_text(fig,ax,x,y,
+                text_list,
+                x_scatter=x, y_scatter=y,
+                textsize=10)
 plt.show()
 ```
 
@@ -54,45 +57,50 @@ plt.text|textalloc
 **text_list** <em>(List[str])</em>:
 - list of texts.
 
-**xlims** <em>(Tuple[float, float])</em>:
-- x-limits of plot gotten from ax.get_xlim() (avoids issues with using the function from various interfaces).
-
-**ylims** <em>(Tuple[float, float])</em>:
-- y-limits of plot gotten from ax.get_ylim() (avoids issues with using the function from various interfaces).
-
 **x_scatter** <em>(Union[np.ndarray, List[float]])</em>:
-- x-coordinates of all scattered points in plot 1d array/list.
+- x-coordinates of all scattered points in plot 1d array/list. Default: None.
 
 **y_scatter** <em>(Union[np.ndarray, List[float]])</em>:
-- y-coordinates of all scattered points in plot 1d array/list.
+- y-coordinates of all scattered points in plot 1d array/list. Default: None.
 
 **x_lines** <em>(List[Union[np.ndarray, List[float]]])</em>:
-- x-coordinates of all lines in plot list of 1d arrays/lists.
+- x-coordinates of all lines in plot list of 1d arrays/lists. Default: None.
 
 **y_lines** <em>(List[Union[np.ndarray, List[float]]])</em>:
-- y-coordinates of all lines in plot list of 1d arrays/lists.
+- y-coordinates of all lines in plot list of 1d arrays/lists. Default: None.
 
 **textsize** <em>(int)</em>:
 - size of text. Default: 10.
 
-**distance_margin_fraction** (float)</em>:
+**margin** (float)</em>:
 - parameter for margins between objects. Increase for larger margins to points and lines. Default: 0.015.
+
+**max_distance** (float)</em>:
+- parameter for min distance from textbox to its position. Default: 0.02.
+
+**max_distance** (float)</em>:
+- parameter for max distance from textbox to its position. Default: 0.07.
 
 **verbose** <em>(bool)</em>:
 - prints progress using tqdm. Default: False.
 
 **draw_lines** <em>(bool)</em>:
-- draws lines from original points to textboxes. Default: False.
+- draws lines from original points to textboxes. Default: True.
 
 **linecolor** <em>(str)</em>:
-- color code of the lines between points and text-boxes. Default: "k".
+- color code of the lines between points and text-boxes. Default: "r".
 
 **draw_all** <em>(bool)</em>:
-- Draws all texts after allocating as many as possible despit overlap. Default: False.
+- Draws all texts after allocating as many as possible despit overlap. Default: True.
 
 **nbr_candidates** <em>(int)</em>:
-- Sets the number of candidates used. Default: 0 (all candidates used)
+- Sets the number of candidates used. Default: 100
 
+**linewidth** <em>(float)</em>:
+- Width of line. Defaults to 1.
+
+**textcolor** <em>(str)</em>:
+- Color code of the text. Defaults to "k".
 
 # Implementation and speed
 
@@ -107,7 +115,7 @@ For each textbox to be plotted:
 
 ## Speed
 
-The plot in the top of this Readme was generated in 1.98s on a local laptop, and there are rarely more textboxes that fit into one plot. If the result is still too slow to render, try setting `nbr_candidates` lower than 36.
+The plot in the top of this Readme was generated in 2.1s on a local laptop, and there are rarely more textboxes that fit into one plot. If the result is still too slow to render, try setting `nbr_candidates` lower.
 
 The speed is greatly improved by usage of numpy broadcasting in all functions for computing overlap (see `textalloc/overlap_functions` and `textalloc/find_non_overlapping`). A simple example from the function `non_overlapping_with_boxes` which checks if the candidate boxes (expanded with xfrac, yfrac to provide a margin) overlap with already allocated boxes:
 
@@ -119,7 +127,7 @@ The statement compares xmin coordinates of all candidates with xmax coordinates 
 
 # Types of overlap supported
 
-textalloc supports avoiding overlap with points, lines, and the plot boundary in addition to other text-boxes. See the example below for a combination of the three:
+textalloc supports avoiding overlap with points, lines, and the plot boundary in addition to other text-boxes. See examples below and `demo.py` for all examples:
 
 ```
 import textalloc as ta
@@ -135,17 +143,41 @@ x, y = np.random.random((2,100))
 fig,ax = plt.subplots(dpi=100)
 ax.plot(x_line,y_line,color="black")
 ax.scatter(x,y,c="b")
-ta.allocate_text(fig, ax, x_line, y_line, text_list, ax.get_xlim(), ax.get_ylim(), x_scatter=x, y_scatter=y, x_lines=[x_line], y_lines=[y_line], draw_lines=True)
+ta.allocate_text(fig,ax,x_line,y_line,
+                text_list,
+                x_scatter=x, y_scatter=y,
+                x_lines=[x_line], y_lines=[y_line])
 plt.show()
 ```
 
-plt.text|textalloc
+plt.text|textalloc (0.2s)
 :-------------------------:|:-------------------------:
 ![](images/scatterlines_before.png)|![](images/scatterlines_after.png)
 
-# Improvements
+```
+import textalloc as ta
+import numpy as np
+import matplotlib.pyplot as plt
 
-Ideas for future improvements:
+np.random.seed(2017)
+x_data = np.random.random_sample(100)
+y_data = np.random.random_integers(10,50,(100))
 
-- Add support for more pyplot objects.
-- Improve allocation when draw_lines=True.
+f, ax = plt.subplots(dpi=200)
+bars = ax.bar(x_data, y_data, width=0.002, facecolor='k')
+ta.allocate_text(f,ax,x_data,y_data,
+                [str(yy) for yy in list(y_data)],
+                x_lines=[np.array([xx,xx]) for xx in list(x_data)],
+                y_lines=[np.array([0,yy]) for yy in list(y_data)], 
+                textsize=8,
+                margin=0.004,
+                min_distance=0.005,
+                linewidth=0.7,
+                nbr_candidates=100,
+                textcolor="b")
+plt.show()
+```
+
+plt.text|textalloc (0.7s)
+:-------------------------:|:-------------------------:
+![](images/bar_before.png)|![](images/bar_after.png)
