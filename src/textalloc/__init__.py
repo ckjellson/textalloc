@@ -75,8 +75,8 @@ def allocate_text(
         )
         x_lines = [np.array(x_line) for x_line in x_lines]
         y_lines = [np.array(y_line) for y_line in y_lines]
-    assert min_distance < max_distance
-    assert min_distance > margin
+    assert min_distance <= max_distance
+    assert min_distance >= margin
 
     # Create boxes in original plot
     if verbose:
