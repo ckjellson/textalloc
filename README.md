@@ -60,9 +60,13 @@ x_lines: (array-like), default None
     x-coordinates of all lines in plot.
 y_lines: (array-like), default None
     y-coordinates of all lines in plot.
+scatter_sizes: (array-like), default None
+    sizes of all scattered objects in plot list of 1d arrays/lists.
+text_scatter_sizes: (array-like), default None
+    sizes of text scattered objects in plot list of 1d arrays/lists.
 textsize: (int), default 10
     Size of text.
-margin: (float), default 0.01
+margin: (float), default 0.0
     Parameter for margins between objects.
     Increase for larger margins to points and lines.
     Given in proportion of ax dimensions (0-1)
@@ -70,7 +74,7 @@ min_distance: (float), default 0.015
     Parameter for min distance from textbox to
     its plotted position.
     Given in proportion of ax dimensions (0-1)
-max_distance: (float), default 0.07
+max_distance: (float), default 0.2
     Parameter for max distance from textbox to
     its plotted position.
     Given in proportion of ax dimensions (0-1)
@@ -82,12 +86,15 @@ linecolor: (str), default "r"
     Color code of the lines between points and text-boxes.
 draw_all: (bool), default True
     Draws all texts after allocating as many as possible despite overlap.
-nbr_candidates: (int), default 100
+nbr_candidates: (int), default 200
     Sets the number of candidates used.
 linewidth: (float), default 1
     Width of line between textbox and it's origin.
 textcolor: (str), default "k"
     Color code of the text.
+seed: (int), default 0
+    seeds order of text allocations.
+**kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed
 

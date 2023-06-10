@@ -11,6 +11,7 @@ def generate_candidates(
     xmaxdistance: float,
     ymaxdistance: float,
     nbr_candidates: int,
+    scatter_size: float,
 ) -> np.ndarray:
     """Generates 36 candidate boxes
 
@@ -24,10 +25,15 @@ def generate_candidates(
         xmaxdistance (float): fraction of the x-dimension to use as max distance for text bboxes
         ymaxdistance (float): fraction of the y-dimension to use as max distance for text bboxes
         nbr_candidates (int): nbr of candidates to use. If <1 or >36 uses all 36
+        scatter_size (float): size of scattered text objects.
 
     Returns:
         np.ndarray: candidate boxes array
     """
+    xmindistance += scatter_size
+    ymindistance += scatter_size
+    xmaxdistance += scatter_size
+    ymaxdistance += scatter_size
     candidates = np.array(
         [
             [

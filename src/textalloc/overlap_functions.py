@@ -2,7 +2,11 @@ import numpy as np
 
 
 def non_overlapping_with_points(
-    scatter_xy: np.ndarray, candidates: np.ndarray, xmargin: float, ymargin: float
+    scatter_xy: np.ndarray,
+    candidates: np.ndarray,
+    xmargin: float,
+    ymargin: float,
+    scatter_sizes,
 ) -> np.ndarray:
     """Finds candidates not overlapping with points.
 
@@ -15,21 +19,42 @@ def non_overlapping_with_points(
     Returns:
         np.ndarray: Boolean array of shape (K,) with True for non-overlapping candidates with points
     """
-    return np.invert(
-        np.bitwise_or.reduce(
-            np.bitwise_and(
-                candidates[:, 0][:, None] - xmargin < scatter_xy[:, 0],
+    if scatter_sizes is None:
+        return np.invert(
+            np.bitwise_or.reduce(
                 np.bitwise_and(
-                    candidates[:, 2][:, None] + xmargin > scatter_xy[:, 0],
+                    candidates[:, 0][:, None] - xmargin < scatter_xy[:, 0],
                     np.bitwise_and(
-                        candidates[:, 1][:, None] - ymargin < scatter_xy[:, 1],
-                        candidates[:, 3][:, None] + ymargin > scatter_xy[:, 1],
+                        candidates[:, 2][:, None] + xmargin > scatter_xy[:, 0],
+                        np.bitwise_and(
+                            candidates[:, 1][:, None] - ymargin < scatter_xy[:, 1],
+                            candidates[:, 3][:, None] + ymargin > scatter_xy[:, 1],
+                        ),
                     ),
                 ),
-            ),
-            axis=1,
+                axis=1,
+            )
         )
-    )
+    else:
+        return np.invert(
+            np.bitwise_or.reduce(
+                np.bitwise_and(
+                    candidates[:, 0][:, None] - (xmargin + scatter_sizes)
+                    < scatter_xy[:, 0],
+                    np.bitwise_and(
+                        candidates[:, 2][:, None] + (xmargin + scatter_sizes)
+                        > scatter_xy[:, 0],
+                        np.bitwise_and(
+                            candidates[:, 1][:, None] - (ymargin + scatter_sizes)
+                            < scatter_xy[:, 1],
+                            candidates[:, 3][:, None] + (ymargin + scatter_sizes)
+                            > scatter_xy[:, 1],
+                        ),
+                    ),
+                ),
+                axis=1,
+            )
+        )
 
 
 def non_overlapping_with_lines(

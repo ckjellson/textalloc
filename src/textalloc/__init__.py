@@ -15,17 +15,21 @@ def allocate_text(
     y_scatter: Union[np.ndarray, List[float]] = None,
     x_lines: List[Union[np.ndarray, List[float]]] = None,
     y_lines: List[Union[np.ndarray, List[float]]] = None,
+    scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
+    text_scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
     textsize: int = 10,
-    margin: float = 0.01,
-    min_distance: float = 0.015,
-    max_distance: float = 0.07,
+    margin: float = 0.008,
+    min_distance: float = 0.013,
+    max_distance: float = 0.2,
     verbose: bool = False,
     draw_lines: bool = True,
     linecolor: str = "r",
     draw_all: bool = True,
-    nbr_candidates: int = 100,
+    nbr_candidates: int = 200,
     linewidth: float = 1,
     textcolor: str = "k",
+    seed: int = 0,
+    **kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
 
@@ -39,17 +43,21 @@ def allocate_text(
         y_scatter (Union[np.ndarray, List[float]], optional): y-coordinates of all scattered points in plot 1d array/list. Defaults to None.
         x_lines (List[Union[np.ndarray, List[float]]], optional): x-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
         y_lines (List[Union[np.ndarray, List[float]]], optional): y-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
+        scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of all scattered objects in plot list of 1d arrays/lists. Defaults to None.
+        text_scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of text scattered objects in plot list of 1d arrays/lists. Defaults to None.
         textsize (int, optional): size of text. Defaults to 10.
-        margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.01.
+        margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.0.
         min_distance (float, optional): parameter for min distance between text and origin. Defaults to 0.015.
-        max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.07.
+        max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.2.
         verbose (bool, optional): prints progress using tqdm. Defaults to False.
         draw_lines (bool, optional): draws lines from original points to textboxes. Defaults to True.
         linecolor (str, optional): color code of the lines between points and text-boxes. Defaults to "r".
         draw_all (bool, optional): Draws all texts after allocating as many as possible despit overlap. Defaults to True.
-        nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 0.
+        nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 200.
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (str, optional): color code of the text. Defaults to "k".
+        seed (int, optional): seeds order of text allocations. Defaults to 0.
+        **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
     xlims = ax.get_xlim()
@@ -59,6 +67,10 @@ def allocate_text(
     assert len(x) == len(y)
     x = np.array(x)
     y = np.array(y)
+    if scatter_sizes is not None:
+        scatter_sizes = np.array(scatter_sizes)
+    if text_scatter_sizes is not None:
+        text_scatter_sizes = np.array(text_scatter_sizes)
     if x_scatter is not None:
         assert y_scatter is not None
     if y_scatter is not None:
@@ -77,6 +89,17 @@ def allocate_text(
         y_lines = [np.array(y_line) for y_line in y_lines]
     assert min_distance <= max_distance
     assert min_distance >= margin
+
+    # Seed
+    if seed > 0:
+        randinds = np.arange(x.shape[0])
+        np.random.seed(seed)
+        np.random.shuffle(randinds)
+        text_list = [text_list[i] for i in randinds]
+        x = x[randinds]
+        y = y[randinds]
+        if text_scatter_sizes is not None:
+            text_scatter_sizes = text_scatter_sizes[randinds]
 
     # Create boxes in original plot
     if verbose:
@@ -114,6 +137,8 @@ def allocate_text(
         draw_all,
         scatter_xy=scatterxy,
         lines_xyxy=lines_xyxy,
+        scatter_sizes=scatter_sizes,
+        text_scatter_sizes=text_scatter_sizes,
     )
 
     # Plot once again
@@ -129,11 +154,13 @@ def allocate_text(
                     [x[ind], x_near], [y[ind], y_near], linewidth=linewidth, c=linecolor
                 )
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
-        ax.text(x_coord, y_coord, s, size=textsize, c=textcolor)
+        ax.text(x_coord, y_coord, s, size=textsize, c=textcolor, **kwargs)
 
     if draw_all:
         for ind in overlapping_boxes_inds:
-            ax.text(x[ind], y[ind], text_list[ind], size=textsize, c=textcolor)
+            ax.text(
+                x[ind], y[ind], text_list[ind], size=textsize, c=textcolor, **kwargs
+            )
 
     if verbose:
         print(f"Finished in {time.time()-t0}s")
