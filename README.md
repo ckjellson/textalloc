@@ -64,7 +64,7 @@ scatter_sizes: (array-like), default None
     sizes of all scattered objects in plot list of 1d arrays/lists.
 text_scatter_sizes: (array-like), default None
     sizes of text scattered objects in plot list of 1d arrays/lists.
-textsize: (int), default 10
+textsize: (Union[int, List[int]]), default 10
     Size of text.
 margin: (float), default 0.0
     Parameter for margins between objects.
@@ -90,7 +90,7 @@ nbr_candidates: (int), default 200
     Sets the number of candidates used.
 linewidth: (float), default 1
     Width of line between textbox and it's origin.
-textcolor: (str), default "k"
+textcolor: (Union[str, List[str]]), default "k"
     Color code of the text.
 seed: (int), default 0
     seeds order of text allocations.
