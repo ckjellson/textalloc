@@ -41,6 +41,10 @@ plt.text|textalloc
 ![](images/scatter_before.png)|![](images/scatter_after.png)
 
 ## Parameters
+
+Text-boxes input parameters are x, y and text_list, which define the text-strings to be plotted and the positions that the texts should point to.
+x_scatter, y_scatter, x_lines and y_lines define all points and lines in the plot that should not overlap with the text-boxes. Note that the scattered points do not have to be the same as x and y for the text-boxes, but can include more, or different scattered points.
+
 ```
 fig:
     matplotlib figure used for rendering textbox-sizes.
@@ -57,9 +61,9 @@ x_scatter: (array-like), default None
 y_scatter: (array-like), default None
     y-coordinates of all scattered points.
 x_lines: (array-like), default None
-    x-coordinates of all lines in plot.
+    pairs of x-coordinates of all lines in the plot (start and endpoint).
 y_lines: (array-like), default None
-    y-coordinates of all lines in plot.
+    pairs of y-coordinates of all lines in the plot (start and endpoint).
 scatter_sizes: (array-like), default None
     sizes of all scattered objects in plot list of 1d arrays/lists.
 text_scatter_sizes: (array-like), default None
@@ -98,7 +102,7 @@ seed: (int), default 0
 ```
 # Implementation and speed
 
-The focus in this implementation is on speed and allocating as many text-boxes as possible into the free space in the plot. There are three main steps of the algorithm:
+The implementation aims to plot as many text-boxes as possible in the free space in the plot. There are three main steps of the algorithm:
 
 For each textbox to be plotted:
 1. Generate a large number of candidate boxes near the original point with size that matches the fontsize.
@@ -107,7 +111,7 @@ For each textbox to be plotted:
 
 ## Speed
 
-The plot in the top of this Readme was generated in 2.1s on a local laptop, and there are rarely more textboxes that fit into one plot. If the result is still too slow to render, try decreasing `nbr_candidates`.
+The plot in the top of this Readme was generated in 2.1s on a laptop, and there are rarely more textboxes that fit into one plot. If the result is still too slow to render, try decreasing `nbr_candidates`.
 
 The speed is greatly improved by usage of numpy broadcasting in all functions for computing overlap (see `textalloc/overlap_functions` and `textalloc/find_non_overlapping`). A simple example from the function `non_overlapping_with_boxes` which checks if the candidate boxes (expanded with xfrac, yfrac to provide a margin) overlap with already allocated boxes:
 
