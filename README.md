@@ -73,15 +73,15 @@ textsize: (Union[int, List[int]]), default 10
 margin: (float), default 0.0
     Parameter for margins between objects.
     Increase for larger margins to points and lines.
-    Given in proportion of ax dimensions (0-1)
+    Given in proportion of x-ax dimensions (0-1)
 min_distance: (float), default 0.015
     Parameter for min distance from textbox to
     its plotted position.
-    Given in proportion of ax dimensions (0-1)
+    Given in proportion of x-ax dimensions (0-1)
 max_distance: (float), default 0.2
     Parameter for max distance from textbox to
     its plotted position.
-    Given in proportion of ax dimensions (0-1)
+    Given in proportion of x-ax dimensions (0-1)
 verbose: (bool), default False
     prints progress using tqdm.
 draw_lines: (bool), default True
@@ -97,7 +97,9 @@ linewidth: (float), default 1
 textcolor: (Union[str, List[str]]), default "k"
     Color code of the text.
 seed: (int), default 0
-    seeds order of text allocations.
+    Seeds order of text allocations.
+mode: (str), default None
+    Sets the preferred location of the boxes with options: (south, north, east, west, northeast, northwest, southeast, southwest).
 **kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed

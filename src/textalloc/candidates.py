@@ -12,8 +12,9 @@ def generate_candidates(
     ymaxdistance: float,
     nbr_candidates: int,
     scatter_size: float,
+    mode: str,
 ) -> np.ndarray:
-    """Generates 36 candidate boxes
+    """Generates candidate boxes
 
     Args:
         w (float): width of box
@@ -26,6 +27,7 @@ def generate_candidates(
         ymaxdistance (float): fraction of the y-dimension to use as max distance for text bboxes
         nbr_candidates (int): nbr of candidates to use. If <1 or >36 uses all 36
         scatter_size (float): size of scattered text objects.
+        mode (str): set preferred loaction of the boxes.
 
     Returns:
         np.ndarray: candidate boxes array
@@ -114,4 +116,45 @@ def generate_candidates(
                 y_sample + h / 2,
             ]
         candidates = np.vstack([candidates, candidates2])
+    if mode is not None:
+        if mode == "south":
+            candidates = candidates[(candidates[:, 1] < y) & (candidates[:, 3] < y), :]
+        elif mode == "north":
+            candidates = candidates[(candidates[:, 1] > y) & (candidates[:, 3] > y), :]
+        elif mode == "west":
+            candidates = candidates[(candidates[:, 0] < x) & (candidates[:, 2] < x), :]
+        elif mode == "east":
+            candidates = candidates[(candidates[:, 0] > x) & (candidates[:, 2] > x), :]
+        elif mode == "southwest":
+            candidates = candidates[
+                (candidates[:, 1] < y)
+                & (candidates[:, 3] < y)
+                & (candidates[:, 0] < x)
+                & (candidates[:, 2] < x),
+                :,
+            ]
+        elif mode == "southeast":
+            candidates = candidates[
+                (candidates[:, 1] < y)
+                & (candidates[:, 3] < y)
+                & (candidates[:, 0] > x)
+                & (candidates[:, 2] > x),
+                :,
+            ]
+        elif mode == "northwest":
+            candidates = candidates[
+                (candidates[:, 1] > y)
+                & (candidates[:, 3] > y)
+                & (candidates[:, 0] < x)
+                & (candidates[:, 2] < x),
+                :,
+            ]
+        elif mode == "northeast":
+            candidates = candidates[
+                (candidates[:, 1] > y)
+                & (candidates[:, 3] > y)
+                & (candidates[:, 0] > x)
+                & (candidates[:, 2] > x),
+                :,
+            ]
     return candidates

@@ -14,6 +14,7 @@ def get_non_overlapping_boxes(
     original_boxes: list,
     xlims: Tuple[float, float],
     ylims: Tuple[float, float],
+    aspect_ratio: float,
     margin: float,
     min_distance: float,
     max_distance: float,
@@ -24,6 +25,7 @@ def get_non_overlapping_boxes(
     lines_xyxy: np.ndarray,
     scatter_sizes: np.ndarray,
     text_scatter_sizes: np.ndarray,
+    mode: str,
 ) -> Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]:
     """Finds boxes that do not have an overlap with any other objects.
 
@@ -31,6 +33,7 @@ def get_non_overlapping_boxes(
         original_boxes (np.ndarray): original boxes containing texts.
         xlims (Tuple[float, float]): x-limits of plot gotten from ax.get_ylim()
         ylims (Tuple[float, float]): y-limits of plot gotten from ax.get_ylim()
+        aspect_ratio (float): aspect ratio of the fig.
         margin (float): parameter for margins between objects. Increase for larger margins to points and lines.
         min_distance (float): parameter for max distance between text and origin.
         max_distance (float): parameter for max distance between text and origin.
@@ -41,19 +44,22 @@ def get_non_overlapping_boxes(
         lines_xyxy (np.ndarray, optional): 2d array of line segments in plot.
         scatter_sizes (array-like): array of object sizes with centers in scatter_xy.
         text_scatter_sizes (array-like): array of object sizes with centers in text objects.
+        mode (str): set preferred loaction of the boxes.
 
     Returns:
         Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]: data of non-overlapping boxes and indices of overlapping boxes.
     """
     xmin_bound, xmax_bound = xlims
     ymin_bound, ymax_bound = ylims
+    xdiff = xmax_bound - xmin_bound
+    ydiff = ymax_bound - ymin_bound
 
-    xmargin = (xmax_bound - xmin_bound) * margin
-    ymargin = (ymax_bound - ymin_bound) * margin
-    xmindistance = (xmax_bound - xmin_bound) * min_distance
-    ymindistance = (ymax_bound - ymin_bound) * min_distance
-    xmaxdistance = (xmax_bound - xmin_bound) * max_distance
-    ymaxdistance = (ymax_bound - ymin_bound) * max_distance
+    xmargin = xdiff * margin
+    ymargin = ydiff * margin * aspect_ratio
+    xmindistance = xdiff * min_distance
+    ymindistance = ydiff * min_distance * aspect_ratio
+    xmaxdistance = xdiff * max_distance
+    ymaxdistance = ydiff * max_distance * aspect_ratio
 
     box_arr = np.zeros((0, 4))
     non_overlapping_boxes = []
@@ -81,7 +87,8 @@ def get_non_overlapping_boxes(
             xmaxdistance,
             ymaxdistance,
             nbr_candidates,
-            scatter_size=text_scatter_size,
+            text_scatter_size,
+            mode,
         )
 
         # Check for overlapping

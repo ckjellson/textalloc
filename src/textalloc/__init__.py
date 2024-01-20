@@ -29,6 +29,7 @@ def allocate_text(
     linewidth: float = 1,
     textcolor: Union[str, List[str]] = "k",
     seed: int = 0,
+    mode: str = None,
     **kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
@@ -46,7 +47,7 @@ def allocate_text(
         scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of all scattered objects in plot list of 1d arrays/lists. Defaults to None.
         text_scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of text scattered objects in plot list of 1d arrays/lists. Defaults to None.
         textsize (Union[int, List[int]], optional): size of text. Defaults to 10.
-        margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.0.
+        margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.008.
         min_distance (float, optional): parameter for min distance between text and origin. Defaults to 0.015.
         max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.2.
         verbose (bool, optional): prints progress using tqdm. Defaults to False.
@@ -57,9 +58,11 @@ def allocate_text(
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         seed (int, optional): seeds order of text allocations. Defaults to 0.
+        mode (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
+    aspect_ratio = fig.get_size_inches()[0] / fig.get_size_inches()[1]
     xlims = ax.get_xlim()
     ylims = ax.get_ylim()
 
@@ -88,7 +91,6 @@ def allocate_text(
         x_lines = [np.array(x_line) for x_line in x_lines]
         y_lines = [np.array(y_line) for y_line in y_lines]
     assert min_distance <= max_distance
-    assert min_distance >= margin
     if type(textsize) is not int:
         assert len(textsize) == len(x)
     else:
@@ -97,6 +99,17 @@ def allocate_text(
         assert len(textcolor) == len(x)
     else:
         textcolor = [textcolor for _ in range(len(x))]
+    assert mode in [
+        None,
+        "south",
+        "north",
+        "east",
+        "west",
+        "southeast",
+        "southwest",
+        "northeast",
+        "northwest",
+    ]
 
     # Seed
     if seed > 0:
@@ -139,16 +152,18 @@ def allocate_text(
         original_boxes,
         xlims,
         ylims,
+        aspect_ratio,
         margin,
         min_distance,
         max_distance,
         verbose,
         nbr_candidates,
         draw_all,
-        scatter_xy=scatterxy,
-        lines_xyxy=lines_xyxy,
-        scatter_sizes=scatter_sizes,
-        text_scatter_sizes=text_scatter_sizes,
+        scatterxy,
+        lines_xyxy,
+        scatter_sizes,
+        text_scatter_sizes,
+        mode,
     )
 
     # Plot once again
