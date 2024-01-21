@@ -1,3 +1,4 @@
+from matplotlib.path import get_path_collection_extents
 from tqdm import tqdm
 from textalloc.non_overlapping_boxes import get_non_overlapping_boxes
 import numpy as np
@@ -16,6 +17,7 @@ def allocate_text(
     x_lines: List[Union[np.ndarray, List[float]]] = None,
     y_lines: List[Union[np.ndarray, List[float]]] = None,
     scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
+    scatter_plot: object = None,
     text_scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
     textsize: Union[int, List[int]] = 10,
     margin: float = 0.008,
@@ -29,7 +31,7 @@ def allocate_text(
     linewidth: float = 1,
     textcolor: Union[str, List[str]] = "k",
     seed: int = 0,
-    mode: str = None,
+    direction: str = None,
     **kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
@@ -45,6 +47,7 @@ def allocate_text(
         x_lines (List[Union[np.ndarray, List[float]]], optional): x-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
         y_lines (List[Union[np.ndarray, List[float]]], optional): y-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
         scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of all scattered objects in plot list of 1d arrays/lists. Defaults to None.
+        scatter_plot (__type__, optional): if possible, provide a scatterplot object (scatter_plot=ax.scatter(...)) for more exact placement. Defaults to None.
         text_scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of text scattered objects in plot list of 1d arrays/lists. Defaults to None.
         textsize (Union[int, List[int]], optional): size of text. Defaults to 10.
         margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.008.
@@ -58,7 +61,7 @@ def allocate_text(
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         seed (int, optional): seeds order of text allocations. Defaults to 0.
-        mode (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
+        direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
@@ -99,7 +102,7 @@ def allocate_text(
         assert len(textcolor) == len(x)
     else:
         textcolor = [textcolor for _ in range(len(x))]
-    assert mode in [
+    assert direction in [
         None,
         "south",
         "north",
@@ -137,6 +140,13 @@ def allocate_text(
         original_boxes.append((x_coord, y_coord, w, h, s))
         ann.remove()
 
+    # If scatterplot exists, get scatter bboxes
+    scatter_plot_bbs = None
+    if scatter_plot is not None:
+        scatter_plot_bbs = get_scatter_bbs(scatter_plot, ax)
+        scatter_plot_bbs[:, 2] = scatter_plot_bbs[:, 0] + scatter_plot_bbs[:, 2]
+        scatter_plot_bbs[:, 3] = scatter_plot_bbs[:, 1] + scatter_plot_bbs[:, 3]
+
     # Process extracted textboxes
     if verbose:
         print("Processing")
@@ -162,13 +172,19 @@ def allocate_text(
         scatterxy,
         lines_xyxy,
         scatter_sizes,
+        scatter_plot_bbs,
         text_scatter_sizes,
-        mode,
+        direction,
     )
 
     # Plot once again
     if verbose:
         print("Plotting")
+    if len(non_overlapping_boxes) == 0:
+        if direction is not None:
+            print(f"No non overlapping boxes found in direction {direction}")
+        else:
+            print("No non overlapping boxes found")
     if draw_lines:
         for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
             x_near, y_near = find_nearest_point_on_box(
@@ -261,3 +277,44 @@ def lines_to_segments(
             lines_xyxy[iter, :] = [line_x[i], line_y[i], line_x[i + 1], line_y[i + 1]]
             iter += 1
     return lines_xyxy
+
+
+def get_scatter_bbs(sc, ax) -> np.ndarray:
+    """Gets the bounding boxes of objects in a scatter plot
+
+    Args:
+        sc (): scatter plot object
+        ax (): pyplot ax
+
+    Returns:
+        np.ndarray: 2d array of bounding boxes
+    """
+    ax.figure.canvas.draw()
+    transform = sc.get_transform()
+    transOffset = sc.get_offset_transform()
+    offsets = sc._offsets
+    paths = sc.get_paths()
+    transforms = sc.get_transforms()
+
+    if not transform.is_affine:
+        paths = [transform.transform_path_non_affine(p) for p in paths]
+        transform = transform.get_affine()
+    if not transOffset.is_affine:
+        offsets = transOffset.transform_non_affine(offsets)
+        transOffset = transOffset.get_affine()
+    if isinstance(offsets, np.ma.MaskedArray):
+        offsets = offsets.filled(np.nan)
+
+    bboxes = []
+    if len(paths) and len(offsets):
+        if len(paths) < len(offsets):
+            paths = [paths[0]] * len(offsets)
+        if len(transforms) < len(offsets):
+            transforms = [transforms[0]] * len(offsets)
+        for p, o, t in zip(paths, offsets, transforms):
+            result = get_path_collection_extents(
+                transform.frozen(), [p], [t], [o], transOffset.frozen()
+            )
+            bboxes.append(result.transformed(ax.transData.inverted()).bounds)
+
+    return np.array(bboxes)

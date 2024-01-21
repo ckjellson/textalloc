@@ -1,6 +1,18 @@
 import numpy as np
 
 
+direction_to_dir = {
+    "north": (0, 1),
+    "south": (0, -1),
+    "east": (1, 0),
+    "west": (-1, 0),
+    "northeast": (1, 1),
+    "northwest": (-1, 1),
+    "southest": (1, -1),
+    "southwest": (-1, -1),
+}
+
+
 def generate_candidates(
     w: float,
     h: float,
@@ -12,7 +24,7 @@ def generate_candidates(
     ymaxdistance: float,
     nbr_candidates: int,
     scatter_size: float,
-    mode: str,
+    direction: str,
 ) -> np.ndarray:
     """Generates candidate boxes
 
@@ -27,7 +39,7 @@ def generate_candidates(
         ymaxdistance (float): fraction of the y-dimension to use as max distance for text bboxes
         nbr_candidates (int): nbr of candidates to use. If <1 or >36 uses all 36
         scatter_size (float): size of scattered text objects.
-        mode (str): set preferred loaction of the boxes.
+        direction (str): set preferred loaction of the boxes.
 
     Returns:
         np.ndarray: candidate boxes array
@@ -36,6 +48,27 @@ def generate_candidates(
     ymindistance += scatter_size
     xmaxdistance += scatter_size
     ymaxdistance += scatter_size
+
+    candidates1 = None
+    if direction is not None:
+        dir = direction_to_dir[direction]
+        dir_cands = []
+        for i in range(1, 10):
+            if dir[0] == -1:
+                x_ = x - w - xmindistance * i
+            elif dir[0] == 0:
+                x_ = x - w / 2
+            elif dir[0] == 1:
+                x_ = x + xmindistance * i
+            if dir[1] == -1:
+                y_ = y - h - ymindistance * i
+            elif dir[1] == 0:
+                y_ = y - h / 2
+            elif dir[1] == 1:
+                y_ = y + ymindistance * i
+            dir_cands.append([x_, y_, x_ + w, y_ + h])
+        candidates1 = np.array(dir_cands)
+
     candidates = np.array(
         [
             [
@@ -98,6 +131,8 @@ def generate_candidates(
             # We move all points a bit further from the target
         ]
     )
+    if direction is not None:
+        candidates = np.vstack([candidates1, candidates])
     if nbr_candidates > candidates.shape[0]:
         candidates2 = np.zeros((nbr_candidates - candidates.shape[0], 4))
         n_gen = candidates2.shape[0]
@@ -116,16 +151,16 @@ def generate_candidates(
                 y_sample + h / 2,
             ]
         candidates = np.vstack([candidates, candidates2])
-    if mode is not None:
-        if mode == "south":
+    if direction is not None:
+        if direction == "south":
             candidates = candidates[(candidates[:, 1] < y) & (candidates[:, 3] < y), :]
-        elif mode == "north":
+        elif direction == "north":
             candidates = candidates[(candidates[:, 1] > y) & (candidates[:, 3] > y), :]
-        elif mode == "west":
+        elif direction == "west":
             candidates = candidates[(candidates[:, 0] < x) & (candidates[:, 2] < x), :]
-        elif mode == "east":
+        elif direction == "east":
             candidates = candidates[(candidates[:, 0] > x) & (candidates[:, 2] > x), :]
-        elif mode == "southwest":
+        elif direction == "southwest":
             candidates = candidates[
                 (candidates[:, 1] < y)
                 & (candidates[:, 3] < y)
@@ -133,7 +168,7 @@ def generate_candidates(
                 & (candidates[:, 2] < x),
                 :,
             ]
-        elif mode == "southeast":
+        elif direction == "southeast":
             candidates = candidates[
                 (candidates[:, 1] < y)
                 & (candidates[:, 3] < y)
@@ -141,7 +176,7 @@ def generate_candidates(
                 & (candidates[:, 2] > x),
                 :,
             ]
-        elif mode == "northwest":
+        elif direction == "northwest":
             candidates = candidates[
                 (candidates[:, 1] > y)
                 & (candidates[:, 3] > y)
@@ -149,7 +184,7 @@ def generate_candidates(
                 & (candidates[:, 2] < x),
                 :,
             ]
-        elif mode == "northeast":
+        elif direction == "northeast":
             candidates = candidates[
                 (candidates[:, 1] > y)
                 & (candidates[:, 3] > y)

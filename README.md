@@ -66,6 +66,9 @@ y_lines: (array-like), default None
     pairs of y-coordinates of all lines in the plot (start and endpoint).
 scatter_sizes: (array-like), default None
     sizes of all scattered objects in plot list of 1d arrays/lists.
+scatter_plot:
+    provide a scatterplot object (scatter_plot=ax.scatter(...))
+    for more exact placement instead of x_scatter, y_scatter, scatter_sizes etc.. default None.
 text_scatter_sizes: (array-like), default None
     sizes of text scattered objects in plot list of 1d arrays/lists.
 textsize: (Union[int, List[int]]), default 10
@@ -98,8 +101,9 @@ textcolor: (Union[str, List[str]]), default "k"
     Color code of the text.
 seed: (int), default 0
     Seeds order of text allocations.
-mode: (str), default None
-    Sets the preferred location of the boxes with options: (south, north, east, west, northeast, northwest, southeast, southwest).
+direction: (str), default None
+    Sets the preferred direction of the boxes with options:
+    (south, north, east, west, northeast, northwest, southeast, southwest).
 **kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed

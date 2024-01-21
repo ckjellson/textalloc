@@ -24,8 +24,9 @@ def get_non_overlapping_boxes(
     scatter_xy: np.ndarray,
     lines_xyxy: np.ndarray,
     scatter_sizes: np.ndarray,
+    scatter_plot_bbs: np.ndarray,
     text_scatter_sizes: np.ndarray,
-    mode: str,
+    direction: str,
 ) -> Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]:
     """Finds boxes that do not have an overlap with any other objects.
 
@@ -40,11 +41,12 @@ def get_non_overlapping_boxes(
         verbose (bool): prints progress using tqdm.
         nbr_candidates (int): Sets the number of candidates used.
         draw_all (bool): Draws all texts after allocating as many as possible despit overlap.
-        scatter_xy (np.ndarray, optional): 2d array of scattered points in plot.
-        lines_xyxy (np.ndarray, optional): 2d array of line segments in plot.
+        scatter_xy (np.ndarray): 2d array of scattered points in plot.
+        lines_xyxy (np.ndarray): 2d array of line segments in plot.
         scatter_sizes (array-like): array of object sizes with centers in scatter_xy.
+        scatter_plot_bbs (np.ndarray): boxes extracted from scatter plot.
         text_scatter_sizes (array-like): array of object sizes with centers in text objects.
-        mode (str): set preferred loaction of the boxes.
+        direction (str): set preferred direction of the boxes.
 
     Returns:
         Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]: data of non-overlapping boxes and indices of overlapping boxes.
@@ -88,19 +90,23 @@ def get_non_overlapping_boxes(
             ymaxdistance,
             nbr_candidates,
             text_scatter_size,
-            mode,
+            direction,
         )
 
         # Check for overlapping
-        if scatter_xy is None:
+        if scatter_xy is None and scatter_plot_bbs is None:
             non_op = np.zeros((candidates.shape[0],)) == 0
-        else:
+        elif scatter_plot_bbs is None:
             non_op = non_overlapping_with_points(
                 scatter_xy,
                 candidates,
                 xmargin,
                 ymargin,
                 scatter_sizes,
+            )
+        else:
+            non_op = non_overlapping_with_boxes(
+                scatter_plot_bbs, candidates, xmargin, ymargin
             )
         if lines_xyxy is None:
             non_ol = np.zeros((candidates.shape[0],)) == 0
