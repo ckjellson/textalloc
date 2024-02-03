@@ -4,6 +4,8 @@ from textalloc.non_overlapping_boxes import get_non_overlapping_boxes
 import numpy as np
 import time
 from typing import List, Tuple, Union
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 
 def allocate_text(
@@ -32,6 +34,8 @@ def allocate_text(
     textcolor: Union[str, List[str]] = "k",
     seed: int = 0,
     direction: str = None,
+    x_logscale_base: float = None,
+    y_logscale_base: float = None,
     **kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
@@ -62,6 +66,8 @@ def allocate_text(
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         seed (int, optional): seeds order of text allocations. Defaults to 0.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
+        x_logscale_base (int, optional): base of x-axis log-scale, required if the scaling of the x-axis is "log"
+        y_logscale_base (int, optional): base of y-axis log-scale, required if the scaling of the y-axis is "log"
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
@@ -153,11 +159,78 @@ def allocate_text(
     if x_scatter is None:
         scatterxy = None
     else:
-        scatterxy = np.transpose(np.vstack([x_scatter, y_scatter]))
+        scatterxy = np.transpose(np.vstack([x_scatter, y_scatter])).astype(np.float64)
     if x_lines is None:
         lines_xyxy = None
     else:
         lines_xyxy = lines_to_segments(x_lines, y_lines)
+
+    # Handle scaling
+    supported_scaling = ["linear", "log"]
+    xscale = ax.get_xaxis().get_scale()
+    yscale = ax.get_yaxis().get_scale()
+    assert xscale in supported_scaling and yscale in supported_scaling
+    if xscale == "log":
+        assert (
+            x_logscale_base is not None
+        )  # Provide x_logscale_base if the x-scale is logscale
+        for i in range(len(original_boxes)):
+            b = original_boxes[i]
+            original_boxes[i] = (
+                np.emath.logn(x_logscale_base, b[0]),
+                b[1],
+                np.emath.logn(x_logscale_base, b[0] + b[2])
+                - np.emath.logn(x_logscale_base, b[0]),
+                b[3],
+                b[4],
+            )
+        xlims = (
+            np.emath.logn(x_logscale_base, xlims[0]),
+            np.emath.logn(x_logscale_base, xlims[1]),
+        )
+        if scatterxy is not None:
+            scatterxy[:, 0] = np.emath.logn(x_logscale_base, scatterxy[:, 0])
+        if lines_xyxy is not None:
+            lines_xyxy[:, 0] = np.emath.logn(x_logscale_base, lines_xyxy[:, 0])
+            lines_xyxy[:, 2] = np.emath.logn(x_logscale_base, lines_xyxy[:, 2])
+        if scatter_plot_bbs is not None:
+            scatter_plot_bbs[:, 0] = np.emath.logn(
+                x_logscale_base, scatter_plot_bbs[:, 0]
+            )
+            scatter_plot_bbs[:, 2] = np.emath.logn(
+                x_logscale_base, scatter_plot_bbs[:, 2]
+            )
+    if yscale == "log":
+        assert (
+            y_logscale_base is not None
+        )  # Provide y_logscale_base if the y-scale is logscale
+        for i in range(len(original_boxes)):
+            b = original_boxes[i]
+            original_boxes[i] = (
+                b[0],
+                np.emath.logn(y_logscale_base, b[1]),
+                b[2],
+                np.emath.logn(y_logscale_base, b[1] + b[3])
+                - np.emath.logn(y_logscale_base, b[1]),
+                b[4],
+            )
+        ylims = (
+            np.emath.logn(y_logscale_base, ylims[0]),
+            np.emath.logn(y_logscale_base, ylims[1]),
+        )
+        if scatterxy is not None:
+            scatterxy[:, 1] = np.emath.logn(y_logscale_base, scatterxy[:, 1])
+        if lines_xyxy is not None:
+            lines_xyxy[:, 1] = np.emath.logn(y_logscale_base, lines_xyxy[:, 1])
+            lines_xyxy[:, 3] = np.emath.logn(y_logscale_base, lines_xyxy[:, 3])
+        if scatter_plot_bbs is not None:
+            scatter_plot_bbs[:, 1] = np.emath.logn(
+                y_logscale_base, scatter_plot_bbs[:, 1]
+            )
+            scatter_plot_bbs[:, 3] = np.emath.logn(
+                y_logscale_base, scatter_plot_bbs[:, 3]
+            )
+
     non_overlapping_boxes, overlapping_boxes_inds = get_non_overlapping_boxes(
         original_boxes,
         xlims,
@@ -176,6 +249,30 @@ def allocate_text(
         text_scatter_sizes,
         direction,
     )
+
+    # Revert scaling
+    if xscale == "log":
+        for i in range(len(non_overlapping_boxes)):
+            b = non_overlapping_boxes[i]
+            non_overlapping_boxes[i] = (
+                x_logscale_base ** b[0],
+                b[1],
+                x_logscale_base ** (b[0] + b[2]) - x_logscale_base ** b[0],
+                b[3],
+                b[4],
+                b[5],
+            )
+    if yscale == "log":
+        for i in range(len(non_overlapping_boxes)):
+            b = non_overlapping_boxes[i]
+            non_overlapping_boxes[i] = (
+                b[0],
+                y_logscale_base ** b[1],
+                b[2],
+                y_logscale_base ** (b[1] + b[3]) - y_logscale_base ** b[1],
+                b[4],
+                b[5],
+            )
 
     # Plot once again
     if verbose:
@@ -270,7 +367,7 @@ def lines_to_segments(
     n_x_segments = np.sum([len(line_x) - 1 for line_x in x_lines])
     n_y_segments = np.sum([len(line_y) - 1 for line_y in y_lines])
     assert n_x_segments == n_y_segments
-    lines_xyxy = np.zeros((n_x_segments, 4))
+    lines_xyxy = np.zeros((n_x_segments, 4)).astype(np.float64)
     iter = 0
     for line_x, line_y in zip(x_lines, y_lines):
         for i in range(len(line_x) - 1):

@@ -104,6 +104,10 @@ seed: (int), default 0
 direction: (str), default None
     Sets the preferred direction of the boxes with options:
     (south, north, east, west, northeast, northwest, southeast, southwest).
+x_logscale_base: (int), default None
+    Base of x-axis log-scale, required if the scaling of the x-axis is "log"
+y_logscale_base: (int), default None
+    Base of y-axis log-scale, required if the scaling of the y-axis is "log"
 **kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed
