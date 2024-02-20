@@ -27,6 +27,8 @@ def get_non_overlapping_boxes(
     scatter_plot_bbs: np.ndarray,
     text_scatter_sizes: np.ndarray,
     direction: str,
+    draw_lines: bool,
+    avoid_label_lines_overlap: bool,
 ) -> Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]:
     """Finds boxes that do not have an overlap with any other objects.
 
@@ -47,6 +49,8 @@ def get_non_overlapping_boxes(
         scatter_plot_bbs (np.ndarray): boxes extracted from scatter plot.
         text_scatter_sizes (array-like): array of object sizes with centers in text objects.
         direction (str): set preferred direction of the boxes.
+        draw_lines (bool): draws lines from original points to textboxes.
+        avoid_label_lines_overlap (bool): If True, avoids overlap with lines drawn between text labels and locations.
 
     Returns:
         Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]: data of non-overlapping boxes and indices of overlapping boxes.
@@ -92,6 +96,26 @@ def get_non_overlapping_boxes(
             text_scatter_size,
             direction,
         )
+        # If overlap with drawn lines should be avoided, create cand_lines.
+        cand_lines = None
+        if avoid_label_lines_overlap:
+            for i_ in range(candidates.shape[0]):
+                x_near, y_near = find_nearest_point_on_box(
+                    candidates[i_, 0],
+                    candidates[i_, 1],
+                    w,
+                    h,
+                    x_original,
+                    y_original,
+                )
+                if x_near is None:
+                    x_near = x_original
+                    y_near = y_original
+                new_line = np.array([[x_near, y_near, x_original, y_original]])
+                if cand_lines is None:
+                    cand_lines = new_line
+                else:
+                    cand_lines = np.vstack([cand_lines, new_line])
 
         # Check for overlapping
         if scatter_xy is None and scatter_plot_bbs is None:
@@ -119,13 +143,24 @@ def get_non_overlapping_boxes(
         else:
             non_orec = non_overlapping_with_boxes(box_arr, candidates, xmargin, ymargin)
         inside = inside_plot(xmin_bound, ymin_bound, xmax_bound, ymax_bound, candidates)
+        if cand_lines is None or box_arr.shape[0] == 0:
+            non_oll = np.zeros((candidates.shape[0],)) == 0
+        else:
+            non_oll = non_overlapping_with_lines(
+                cand_lines, box_arr, xmargin, ymargin, axis=0
+            )
 
         # Validate
         ok_candidates = np.where(
             np.bitwise_and(
-                non_ol, np.bitwise_and(non_op, np.bitwise_and(non_orec, inside))
+                non_ol,
+                np.bitwise_and(
+                    non_op,
+                    np.bitwise_and(non_orec, np.bitwise_and(inside, non_oll)),
+                ),
             )
         )[0]
+        best_candidate = None
         if len(ok_candidates) > 0:
             best_candidate = candidates[ok_candidates[0], :]
             box_arr = np.vstack(
@@ -169,4 +204,55 @@ def get_non_overlapping_boxes(
                     overlapping_boxes_inds.append(i)
             else:
                 overlapping_boxes_inds.append(i)
+        if draw_lines and avoid_label_lines_overlap and best_candidate is not None:
+            x_near, y_near = find_nearest_point_on_box(
+                best_candidate[0], best_candidate[1], w, h, x_original, y_original
+            )
+            if x_near is not None:
+                new_line = np.array([[x_near, y_near, x_original, y_original]])
+                if lines_xyxy is None:
+                    lines_xyxy = new_line
+                else:
+                    lines_xyxy = np.vstack([lines_xyxy, new_line])
     return non_overlapping_boxes, overlapping_boxes_inds
+
+
+def find_nearest_point_on_box(
+    xmin: float, ymin: float, w: float, h: float, x: float, y: float
+) -> Tuple[float, float]:
+    """Finds nearest point on box from point.
+    Returns None,None if point inside box
+
+    Args:
+        xmin (float): xmin of box
+        ymin (float): ymin of box
+        w (float): width of box
+        h (float): height of box
+        x (float): x-coordinate of point
+        y (float): y-coordinate of point
+
+    Returns:
+        Tuple[float, float]: x,y coordinate of nearest point
+    """
+    xmax = xmin + w
+    ymax = ymin + h
+    if x < xmin:
+        if y < ymin:
+            return xmin, ymin
+        elif y > ymax:
+            return xmin, ymax
+        else:
+            return xmin, y
+    elif x > xmax:
+        if y < ymin:
+            return xmax, ymin
+        elif y > ymax:
+            return xmax, ymax
+        else:
+            return xmax, y
+    else:
+        if y < ymin:
+            return x, ymin
+        elif y > ymax:
+            return x, ymax
+    return None, None

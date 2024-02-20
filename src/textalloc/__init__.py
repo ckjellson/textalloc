@@ -1,6 +1,9 @@
 from matplotlib.path import get_path_collection_extents
 from tqdm import tqdm
-from textalloc.non_overlapping_boxes import get_non_overlapping_boxes
+from textalloc.non_overlapping_boxes import (
+    get_non_overlapping_boxes,
+    find_nearest_point_on_box,
+)
 import numpy as np
 import time
 from typing import List, Tuple, Union
@@ -36,6 +39,7 @@ def allocate_text(
     direction: str = None,
     x_logscale_base: float = None,
     y_logscale_base: float = None,
+    avoid_label_lines_overlap: bool = False,
     **kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
@@ -66,8 +70,9 @@ def allocate_text(
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         seed (int, optional): seeds order of text allocations. Defaults to 0.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
-        x_logscale_base (int, optional): base of x-axis log-scale, required if the scaling of the x-axis is "log"
-        y_logscale_base (int, optional): base of y-axis log-scale, required if the scaling of the y-axis is "log"
+        x_logscale_base (int, optional): base of x-axis log-scale, required if the scaling of the x-axis is "log".
+        y_logscale_base (int, optional): base of y-axis log-scale, required if the scaling of the y-axis is "log".
+        avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
@@ -248,6 +253,8 @@ def allocate_text(
         scatter_plot_bbs,
         text_scatter_sizes,
         direction,
+        draw_lines,
+        avoid_label_lines_overlap,
     )
 
     # Revert scaling
@@ -307,47 +314,6 @@ def allocate_text(
 
     if verbose:
         print(f"Finished in {time.time()-t0}s")
-
-
-def find_nearest_point_on_box(
-    xmin: float, ymin: float, w: float, h: float, x: float, y: float
-) -> Tuple[float, float]:
-    """Finds nearest point on box from point.
-    Returns None,None if point inside box
-
-    Args:
-        xmin (float): xmin of box
-        ymin (float): ymin of box
-        w (float): width of box
-        h (float): height of box
-        x (float): x-coordinate of point
-        y (float): y-coordinate of point
-
-    Returns:
-        Tuple[float, float]: x,y coordinate of nearest point
-    """
-    xmax = xmin + w
-    ymax = ymin + h
-    if x < xmin:
-        if y < ymin:
-            return xmin, ymin
-        elif y > ymax:
-            return xmin, ymax
-        else:
-            return xmin, y
-    elif x > xmax:
-        if y < ymin:
-            return xmax, ymin
-        elif y > ymax:
-            return xmax, ymax
-        else:
-            return xmax, y
-    else:
-        if y < ymin:
-            return x, ymin
-        elif y > ymax:
-            return x, ymax
-    return None, None
 
 
 def lines_to_segments(

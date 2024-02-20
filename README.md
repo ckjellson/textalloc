@@ -108,6 +108,8 @@ x_logscale_base: (int), default None
     Base of x-axis log-scale, required if the scaling of the x-axis is "log"
 y_logscale_base: (int), default None
     Base of y-axis log-scale, required if the scaling of the y-axis is "log"
+avoid_label_lines_overlap: (bool), default False
+    If set to True, avoids overlap for drawn lines to text labels.
 **kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed

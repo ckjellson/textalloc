@@ -58,7 +58,11 @@ def non_overlapping_with_points(
 
 
 def non_overlapping_with_lines(
-    lines_xyxy: np.ndarray, candidates: np.ndarray, xmargin: float, ymargin: float
+    lines_xyxy: np.ndarray,
+    candidates: np.ndarray,
+    xmargin: float,
+    ymargin: float,
+    axis: int = 1,
 ) -> np.ndarray:
     """Finds candidates not overlapping with lines
 
@@ -67,6 +71,7 @@ def non_overlapping_with_lines(
         candidates (np.ndarray): candidate boxes
         xmargin (float): fraction of the x-dimension to use as margins for text boxes
         ymargin (float): fraction of the y-dimension to use as margins for text boxes
+        axis (int): If axis set to 0, performs the opposite comparison (lines to boxes)
 
     Returns:
         np.ndarray: Boolean array of shape (K,) with True for non-overlapping candidates with lines.
@@ -123,7 +128,7 @@ def non_overlapping_with_lines(
                     ),
                 ),
             ),
-            axis=1,
+            axis=axis,
         )
     )
 
@@ -154,7 +159,7 @@ def non_overlapping_with_lines(
                     ),
                 ),
             ),
-            axis=1,
+            axis=axis,
         )
     )
     return np.bitwise_and(non_intersecting, non_inside)
