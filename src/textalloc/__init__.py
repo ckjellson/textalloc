@@ -139,6 +139,9 @@ def allocate_text(
         y = y[randinds]
         if text_scatter_sizes is not None:
             text_scatter_sizes = text_scatter_sizes[randinds]
+        textsize = [textsize[i] for i in randinds]
+        textcolor = [textcolor[i] for i in randinds]
+        linecolor = [linecolor[i] for i in randinds]
 
     # Create boxes in original plot
     if verbose:
