@@ -63,7 +63,7 @@ def allocate_text(
         max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.2.
         verbose (bool, optional): prints progress using tqdm. Defaults to False.
         draw_lines (bool, optional): draws lines from original points to textboxes. Defaults to True.
-        linecolor (str, optional): color code of the lines between points and text-boxes. Defaults to "r".
+        linecolor (Union[str, List[str]], optional): color code of the lines between points and text-boxes. Defaults to "r".
         draw_all (bool, optional): Draws all texts after allocating as many as possible despit overlap. Defaults to True.
         nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 200.
         linewidth (float, optional): width of line. Defaults to 1.
@@ -113,6 +113,10 @@ def allocate_text(
         assert len(textcolor) == len(x)
     else:
         textcolor = [textcolor for _ in range(len(x))]
+    if type(linecolor) is not str:
+        assert len(linecolor) == len(x)
+    else:
+        linecolor = [linecolor for _ in range(len(x))]
     assert direction in [
         None,
         "south",
@@ -296,7 +300,7 @@ def allocate_text(
             )
             if x_near is not None:
                 ax.plot(
-                    [x[ind], x_near], [y[ind], y_near], linewidth=linewidth, c=linecolor
+                    [x[ind], x_near], [y[ind], y_near], linewidth=linewidth, c=linecolor[ind]
                 )
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         ax.text(x_coord, y_coord, s, size=textsize[ind], c=textcolor[ind], **kwargs)
