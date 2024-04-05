@@ -1,14 +1,18 @@
 from matplotlib.path import get_path_collection_extents
-from tqdm import tqdm
 from textalloc.non_overlapping_boxes import (
     get_non_overlapping_boxes,
     find_nearest_point_on_box,
 )
 import numpy as np
 import time
-from typing import List, Tuple, Union
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+from typing import List, Union
+
+try:
+    from tqdm import tqdm
+except ImportError:
+
+    def tqdm(iterator, *args, **kwargs):
+        return iterator
 
 
 def allocate_text(
@@ -30,7 +34,7 @@ def allocate_text(
     max_distance: float = 0.2,
     verbose: bool = False,
     draw_lines: bool = True,
-    linecolor: str = "r",
+    linecolor: Union[str, List[str]] = "r",
     draw_all: bool = True,
     nbr_candidates: int = 200,
     linewidth: float = 1,
@@ -303,7 +307,10 @@ def allocate_text(
             )
             if x_near is not None:
                 ax.plot(
-                    [x[ind], x_near], [y[ind], y_near], linewidth=linewidth, c=linecolor[ind]
+                    [x[ind], x_near],
+                    [y[ind], y_near],
+                    linewidth=linewidth,
+                    c=linecolor[ind],
                 )
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         ax.text(x_coord, y_coord, s, size=textsize[ind], c=textcolor[ind], **kwargs)

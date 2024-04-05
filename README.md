@@ -89,7 +89,7 @@ verbose: (bool), default False
     prints progress using tqdm.
 draw_lines: (bool), default True
     draws lines from original points to textboxes.
-linecolor: (str), default "r"
+linecolor: (Union[str, List[str]]), default "r"
     Color code of the lines between points and text-boxes.
 draw_all: (bool), default True
     Draws all texts after allocating as many as possible despite overlap.

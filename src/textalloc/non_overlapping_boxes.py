@@ -7,7 +7,13 @@ from textalloc.overlap_functions import (
     non_overlapping_with_boxes,
     inside_plot,
 )
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+except ImportError:
+
+    def tqdm(iterator, *args, **kwargs):
+        return iterator
 
 
 def get_non_overlapping_boxes(
