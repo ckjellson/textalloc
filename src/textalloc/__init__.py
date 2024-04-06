@@ -81,6 +81,7 @@ def allocate_text(
     """
     t0 = time.time()
     aspect_ratio = fig.get_size_inches()[0] / fig.get_size_inches()[1]
+    aspect_ratio2 = ax.get_aspect()
     xlims = ax.get_xlim()
     ylims = ax.get_ylim()
 
@@ -159,6 +160,10 @@ def allocate_text(
             ann.get_tightbbox(fig.canvas.get_renderer())
         )
         w, h = box[1][0] - box[0][0], box[1][1] - box[0][1]
+        # If aspect ratio has been set, the width and height needs to be compensated here.
+        if aspect_ratio2 != "auto":
+            w = w / (aspect_ratio2 / aspect_ratio)
+            h = h * (aspect_ratio2 / aspect_ratio)
         original_boxes.append((x_coord, y_coord, w, h, s))
         ann.remove()
 
