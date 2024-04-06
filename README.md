@@ -74,7 +74,7 @@ text_scatter_sizes: (array-like), default None
 textsize: (Union[int, List[int]]), default 10
     Size of text.
 margin: (float), default 0.0
-    Parameter for margins between objects.
+    Parameter for margins between objects. Recommendation: keep this lower than min_distance.
     Increase for larger margins to points and lines.
     Given in proportion of x-ax dimensions (0-1)
 min_distance: (float), default 0.015
@@ -110,6 +110,10 @@ y_logscale_base: (int), default None
     Base of y-axis log-scale, required if the scaling of the y-axis is "log"
 avoid_label_lines_overlap: (bool), default False
     If set to True, avoids overlap for drawn lines to text labels.
+src_crs: (object), default None
+    Default crs of data, required when using transform in kwargs.
+    For example one can set src_crs=cartopy.crs.TransverseMercator() which is
+    default in matplotlib if using transform=cartopy.crs.PlateCarree().
 **kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed

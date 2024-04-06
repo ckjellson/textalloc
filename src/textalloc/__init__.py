@@ -44,6 +44,7 @@ def allocate_text(
     x_logscale_base: float = None,
     y_logscale_base: float = None,
     avoid_label_lines_overlap: bool = False,
+    src_crs: object = None,
     **kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
@@ -77,6 +78,7 @@ def allocate_text(
         x_logscale_base (int, optional): base of x-axis log-scale, required if the scaling of the x-axis is "log".
         y_logscale_base (int, optional): base of y-axis log-scale, required if the scaling of the y-axis is "log".
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
+        src_crs (object, optional): Default crs of data, required when using transform in kwargs. For example one can set src_crs=cartopy.crs.TransverseMercator() which is default in matplotlib if using transform=cartopy.crs.PlateCarree(). Defaults to None.
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
@@ -84,6 +86,11 @@ def allocate_text(
     aspect_ratio2 = ax.get_aspect()
     xlims = ax.get_xlim()
     ylims = ax.get_ylim()
+    if kwargs.get("transform", None) is not None:
+        assert src_crs is not None
+        extent = ax.get_extent(crs=kwargs.get("transform", None))
+        xlims = (extent[0], extent[1])
+        ylims = (extent[2], extent[3])
 
     # Ensure good inputs
     assert len(x) == len(y)
@@ -164,6 +171,8 @@ def allocate_text(
         if aspect_ratio2 != "auto":
             w = w / (aspect_ratio2 / aspect_ratio)
             h = h * (aspect_ratio2 / aspect_ratio)
+        if kwargs.get("transform", None) is not None:
+            w, h = kwargs.get("transform", None).transform_point(w, h, src_crs=src_crs)
         original_boxes.append((x_coord, y_coord, w, h, s))
         ann.remove()
 
@@ -316,6 +325,7 @@ def allocate_text(
                     [y[ind], y_near],
                     linewidth=linewidth,
                     c=linecolor[ind],
+                    **kwargs,
                 )
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         ax.text(x_coord, y_coord, s, size=textsize[ind], c=textcolor[ind], **kwargs)
