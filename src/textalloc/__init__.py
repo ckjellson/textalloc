@@ -5,7 +5,7 @@ from textalloc.non_overlapping_boxes import (
 )
 import numpy as np
 import time
-from typing import List, Union
+from typing import Any, Dict, List, Union
 
 try:
     from tqdm import tqdm
@@ -45,7 +45,8 @@ def allocate_text(
     y_logscale_base: float = None,
     avoid_label_lines_overlap: bool = False,
     src_crs: object = None,
-    **kwargs,
+    plot_kwargs: Dict[str, Any] = None,
+    ** kwargs,
 ):
     """Main function of allocating text-boxes in matplotlib plot
 
@@ -79,6 +80,7 @@ def allocate_text(
         y_logscale_base (int, optional): base of y-axis log-scale, required if the scaling of the y-axis is "log".
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         src_crs (object, optional): Default crs of data, required when using transform in kwargs. For example one can set src_crs=cartopy.crs.TransverseMercator() which is default in matplotlib if using transform=cartopy.crs.PlateCarree(). Defaults to None.
+        plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
@@ -325,7 +327,7 @@ def allocate_text(
                     [y[ind], y_near],
                     linewidth=linewidth,
                     c=linecolor[ind],
-                    **kwargs,
+                    **(plot_kwargs if plot_kwargs is not None else {}),
                 )
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         ax.text(x_coord, y_coord, s, size=textsize[ind], c=textcolor[ind], **kwargs)

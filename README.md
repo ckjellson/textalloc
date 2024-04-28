@@ -114,6 +114,7 @@ src_crs: (object), default None
     Default crs of data, required when using transform in kwargs.
     For example one can set src_crs=cartopy.crs.TransverseMercator() which is
     default in matplotlib if using transform=cartopy.crs.PlateCarree().
+plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
 **kwargs: (), kwargs for the plt.text() call.
 ```
 # Implementation and speed
