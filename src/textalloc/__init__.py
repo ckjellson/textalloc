@@ -6,6 +6,7 @@ from textalloc.non_overlapping_boxes import (
 import numpy as np
 import time
 from typing import Any, Dict, List, Union
+import warnings
 
 try:
     from tqdm import tqdm
@@ -15,8 +16,7 @@ except ImportError:
         return iterator
 
 
-def allocate_text(
-    fig,
+def allocate(
     ax,
     x: Union[np.ndarray, List[float]],
     y: Union[np.ndarray, List[float]],
@@ -48,7 +48,6 @@ def allocate_text(
     """Main function of allocating text-boxes in matplotlib plot
 
     Args:
-        fig (_type_): matplotlib figure used for rendering textbox-sizes.
         ax (_type_): matplotlib axes used for plotting.
         x (Union[np.ndarray, List[float]]): x-coordinates of texts 1d array/list.
         y (Union[np.ndarray, List[float]]): y-coordinates of texts 1d array/list.
@@ -78,6 +77,7 @@ def allocate_text(
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
+    fig = ax.get_figure()
     if kwargs.get("transform", None) is None:
         fig.draw_without_rendering()
     else:
@@ -272,6 +272,20 @@ def allocate_text(
 
     if verbose:
         print(f"Finished in {time.time()-t0}s")
+
+
+def allocate_text(
+    fig,
+    ax,
+    x: Union[np.ndarray, List[float]],
+    y: Union[np.ndarray, List[float]],
+    text_list: List[str],
+    **kwargs,
+):
+    warnings.warn(
+        "Usage of allocate_text will be replaced with allocate in future releases, removing the need for the fig argument"
+    )
+    allocate(ax, x, y, text_list, **kwargs)
 
 
 def lines_to_segments(

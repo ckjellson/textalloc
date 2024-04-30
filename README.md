@@ -29,10 +29,10 @@ x, y = np.random.random((2,30))
 fig, ax = plt.subplots()
 ax.scatter(x, y, c='b')
 text_list = [f'Text{i}' for i in range(len(x))]
-ta.allocate_text(fig,ax,x,y,
-                text_list,
-                x_scatter=x, y_scatter=y,
-                textsize=10)
+ta.allocate(ax,x,y,
+            text_list,
+            x_scatter=x, y_scatter=y,
+            textsize=10)
 plt.show()
 ```
 
@@ -46,8 +46,6 @@ Text-boxes input parameters are x, y and text_list, which define the text-string
 x_scatter, y_scatter, x_lines and y_lines define all points and lines in the plot that should not overlap with the text-boxes. Note that the scattered points do not have to be the same as x and y for the text-boxes, but can include more, or different scattered points.
 
 ```
-fig:
-    matplotlib figure used for rendering textbox-sizes.
 ax:
     matplotlib axes used for plotting.
 x: (array-like):
@@ -151,10 +149,10 @@ x, y = np.random.random((2,100))
 fig,ax = plt.subplots(dpi=100)
 ax.plot(x_line,y_line,color="black")
 ax.scatter(x,y,c="b")
-ta.allocate_text(fig,ax,x_line,y_line,
-                text_list,
-                x_scatter=x, y_scatter=y,
-                x_lines=[x_line], y_lines=[y_line])
+ta.allocate(ax,x_line,y_line,
+            text_list,
+            x_scatter=x, y_scatter=y,
+            x_lines=[x_line], y_lines=[y_line])
 plt.show()
 ```
 
@@ -173,16 +171,16 @@ y_data = np.random.random_integers(10,50,(100))
 
 f, ax = plt.subplots(dpi=200)
 bars = ax.bar(x_data, y_data, width=0.002, facecolor='k')
-ta.allocate_text(f,ax,x_data,y_data,
-                [str(yy) for yy in list(y_data)],
-                x_lines=[np.array([xx,xx]) for xx in list(x_data)],
-                y_lines=[np.array([0,yy]) for yy in list(y_data)], 
-                textsize=8,
-                margin=0.004,
-                min_distance=0.005,
-                linewidth=0.7,
-                nbr_candidates=100,
-                textcolor="b")
+ta.allocate(ax,x_data,y_data,
+            [str(yy) for yy in list(y_data)],
+            x_lines=[np.array([xx,xx]) for xx in list(x_data)],
+            y_lines=[np.array([0,yy]) for yy in list(y_data)], 
+            textsize=8,
+            margin=0.004,
+            min_distance=0.005,
+            linewidth=0.7,
+            nbr_candidates=100,
+            textcolor="b")
 plt.show()
 ```
 
@@ -227,15 +225,15 @@ ax.add_image(request, zoom, alpha=0.5, cmap='gray')
 ax.scatter(x, y, c='b', transform=ccrs.PlateCarree())
 
 text_list = [f'Text{i}' for i in range(len(x))]
-ta.allocate_text(fig,ax,x,y,
-                text_list,
-                x_scatter=x, y_scatter=y,
-                textsize=10,
-                draw_lines=True,
-                linewidth=0.5,
-                draw_all=False,
-                transform=ccrs.PlateCarree(),
-                avoid_label_lines_overlap=True)
+ta.allocate(ax,x,y,
+            text_list,
+            x_scatter=x, y_scatter=y,
+            textsize=10,
+            draw_lines=True,
+            linewidth=0.5,
+            draw_all=False,
+            transform=ccrs.PlateCarree(),
+            avoid_label_lines_overlap=True)
 plt.show()
 ```
 ![](images/cartopy.png)
