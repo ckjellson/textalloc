@@ -104,18 +104,13 @@ seed: (int), default 0
 direction: (str), default None
     Sets the preferred direction of the boxes with options:
     (south, north, east, west, northeast, northwest, southeast, southwest).
-x_logscale_base: (int), default None
-    Base of x-axis log-scale, required if the scaling of the x-axis is "log"
-y_logscale_base: (int), default None
-    Base of y-axis log-scale, required if the scaling of the y-axis is "log"
 avoid_label_lines_overlap: (bool), default False
     If set to True, avoids overlap for drawn lines to text labels.
-src_crs: (object), default None
-    Default crs of data, required when using transform in kwargs.
-    For example one can set src_crs=cartopy.crs.TransverseMercator() which is
-    default in matplotlib if using transform=cartopy.crs.PlateCarree().
-plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
-**kwargs: (), kwargs for the plt.text() call.
+plot_kwargs: (dict), default None
+    kwargs for the plt.plot of the lines if draw_lines is True.
+**kwargs: ()
+    kwargs for the plt.text() call.
+    If transform is used, it only needs to be provided here, i.e. not also in plot_kwargs.
 ```
 # Implementation and speed
 
@@ -194,3 +189,53 @@ plt.show()
 plt.text|textalloc (0.7s)
 :-------------------------:|:-------------------------:
 ![](images/bar_before.png)|![](images/bar_after.png)
+
+# Plotting on images and using transforms
+
+textalloc now also supports plotting on images and using transforms. Below is an eample of using the PlateCarree transform to plot on top of a downloaded OSM-map (thank you @nebukadnezar for the example).
+
+```
+import numpy as np
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.io.img_tiles as cimgt
+import textalloc as ta
+
+np.random.seed(1)
+x = np.random.rand(100)
+x += 150.5
+y = np.random.rand(100)
+y -= 34.5
+
+dpi = 72
+fig = plt.figure(figsize=(800/dpi, 800/dpi), dpi=dpi)
+
+zoom = 10
+sitelon = np.mean(x)
+sitelat = np.mean(y)
+radius = (np.max(x) - np.min(x) ) / 1.5
+ll_lon = sitelon - radius * (1/np.cos(np.radians(sitelat)))
+ll_lat = sitelat - radius
+ur_lon = sitelon + radius * (1/np.cos(np.radians(sitelat)))
+ur_lat = sitelat + radius
+extent = [ll_lon, ur_lon, ll_lat, ur_lat]
+
+request = cimgt.OSM(desired_tile_form="L")
+ax = plt.axes(projection=request.crs)
+ax.set_extent(extent)
+ax.add_image(request, zoom, alpha=0.5, cmap='gray')
+ax.scatter(x, y, c='b', transform=ccrs.PlateCarree())
+
+text_list = [f'Text{i}' for i in range(len(x))]
+ta.allocate_text(fig,ax,x,y,
+                text_list,
+                x_scatter=x, y_scatter=y,
+                textsize=10,
+                draw_lines=True,
+                linewidth=0.5,
+                draw_all=False,
+                transform=ccrs.PlateCarree(),
+                avoid_label_lines_overlap=True)
+plt.show()
+```
+![](images/cartopy.png)

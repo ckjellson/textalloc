@@ -41,10 +41,7 @@ def allocate_text(
     textcolor: Union[str, List[str]] = "k",
     seed: int = 0,
     direction: str = None,
-    x_logscale_base: float = None,
-    y_logscale_base: float = None,
     avoid_label_lines_overlap: bool = False,
-    src_crs: object = None,
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
 ):
@@ -76,25 +73,23 @@ def allocate_text(
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         seed (int, optional): seeds order of text allocations. Defaults to 0.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
-        x_logscale_base (int, optional): base of x-axis log-scale, required if the scaling of the x-axis is "log".
-        y_logscale_base (int, optional): base of y-axis log-scale, required if the scaling of the y-axis is "log".
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
-        src_crs (object, optional): Default crs of data, required when using transform in kwargs. For example one can set src_crs=cartopy.crs.TransverseMercator() which is default in matplotlib if using transform=cartopy.crs.PlateCarree(). Defaults to None.
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
         **kwargs (): kwargs for the plt.text() call.
     """
     t0 = time.time()
-    fig.draw_without_rendering()
+    if kwargs.get("transform", None) is None:
+        fig.draw_without_rendering()
+    else:
+        if plot_kwargs is None:
+            plot_kwargs = {}
+        plot_kwargs["transform"] = kwargs.get("transform")
     aspect_ratio = fig.get_size_inches()[0] / fig.get_size_inches()[1]
     xlims = ax.get_xlim()
     ylims = ax.get_ylim()
-    if kwargs.get("transform", None) is not None:
-        assert src_crs is not None
-        extent = ax.get_extent(crs=kwargs.get("transform", None))
-        xlims = (extent[0], extent[1])
-        ylims = (extent[2], extent[3])
+    xlims, ylims = data_to_display(xlims, ylims, ax)
 
-    # Ensure good inputs
+    # Ensure good inputs and transform inputs
     assert len(x) == len(y)
     x = np.array(x)
     y = np.array(y)
@@ -107,8 +102,9 @@ def allocate_text(
     if y_scatter is not None:
         assert x_scatter is not None
         assert len(y_scatter) == len(x_scatter)
-        x_scatter = np.array(x_scatter)
-        y_scatter = np.array(y_scatter)
+        x_scatter, y_scatter = data_to_display(
+            x_scatter, y_scatter, ax, transform=kwargs.get("transform", None)
+        )
     if x_lines is not None:
         assert y_lines is not None
     if y_lines is not None:
@@ -116,8 +112,12 @@ def allocate_text(
         assert all(
             [len(x_line) == len(y_line) for x_line, y_line in zip(x_lines, y_lines)]
         )
-        x_lines = [np.array(x_line) for x_line in x_lines]
-        y_lines = [np.array(y_line) for y_line in y_lines]
+        x_lines_temp, y_lines_temp = [], []
+        for x_line, y_line in zip(x_lines, y_lines):
+            xl, yl = data_to_display(x_line, y_line, ax)
+            x_lines_temp.append(xl)
+            y_lines_temp.append(yl)
+        x_lines, y_lines = x_lines_temp, y_lines_temp
     assert min_distance <= max_distance
     if type(textsize) is not int:
         assert len(textsize) == len(x)
@@ -164,15 +164,17 @@ def allocate_text(
     for x_coord, y_coord, s, ts in tqdm(
         zip(x, y, text_list, textsize), disable=not verbose
     ):
-        ann = ax.text(x_coord, y_coord, s, size=ts)
-        box = ax.transData.inverted().transform(
-            ann.get_tightbbox(fig.canvas.get_renderer())
+        ann = ax.text(x_coord, y_coord, s, size=ts, **kwargs)
+        box = ann.get_tightbbox(fig.canvas.get_renderer())
+        w, h = box.x1 - box.x0, box.y1 - box.y0
+        x_, y_ = data_to_display(
+            [x_coord], [y_coord], ax, transform=kwargs.get("transform", None)
         )
-        w, h = box[1][0] - box[0][0], box[1][1] - box[0][1]
-        if kwargs.get("transform", None) is not None:
-            w, h = kwargs.get("transform", None).transform_point(w, h, src_crs=src_crs)
-        original_boxes.append((x_coord, y_coord, w, h, s))
+        original_boxes.append((x_[0], y_[0], w, h, s))
         ann.remove()
+
+    # Transform datapoints as well
+    x, y = data_to_display(x, y, ax, transform=kwargs.get("transform", None))
 
     # If scatterplot exists, get scatter bboxes
     scatter_plot_bbs = None
@@ -192,72 +194,6 @@ def allocate_text(
         lines_xyxy = None
     else:
         lines_xyxy = lines_to_segments(x_lines, y_lines)
-
-    # Handle scaling
-    supported_scaling = ["linear", "log"]
-    xscale = ax.get_xaxis().get_scale()
-    yscale = ax.get_yaxis().get_scale()
-    assert xscale in supported_scaling and yscale in supported_scaling
-    if xscale == "log":
-        assert (
-            x_logscale_base is not None
-        )  # Provide x_logscale_base if the x-scale is logscale
-        for i in range(len(original_boxes)):
-            b = original_boxes[i]
-            original_boxes[i] = (
-                np.emath.logn(x_logscale_base, b[0]),
-                b[1],
-                np.emath.logn(x_logscale_base, b[0] + b[2])
-                - np.emath.logn(x_logscale_base, b[0]),
-                b[3],
-                b[4],
-            )
-        xlims = (
-            np.emath.logn(x_logscale_base, xlims[0]),
-            np.emath.logn(x_logscale_base, xlims[1]),
-        )
-        if scatterxy is not None:
-            scatterxy[:, 0] = np.emath.logn(x_logscale_base, scatterxy[:, 0])
-        if lines_xyxy is not None:
-            lines_xyxy[:, 0] = np.emath.logn(x_logscale_base, lines_xyxy[:, 0])
-            lines_xyxy[:, 2] = np.emath.logn(x_logscale_base, lines_xyxy[:, 2])
-        if scatter_plot_bbs is not None:
-            scatter_plot_bbs[:, 0] = np.emath.logn(
-                x_logscale_base, scatter_plot_bbs[:, 0]
-            )
-            scatter_plot_bbs[:, 2] = np.emath.logn(
-                x_logscale_base, scatter_plot_bbs[:, 2]
-            )
-    if yscale == "log":
-        assert (
-            y_logscale_base is not None
-        )  # Provide y_logscale_base if the y-scale is logscale
-        for i in range(len(original_boxes)):
-            b = original_boxes[i]
-            original_boxes[i] = (
-                b[0],
-                np.emath.logn(y_logscale_base, b[1]),
-                b[2],
-                np.emath.logn(y_logscale_base, b[1] + b[3])
-                - np.emath.logn(y_logscale_base, b[1]),
-                b[4],
-            )
-        ylims = (
-            np.emath.logn(y_logscale_base, ylims[0]),
-            np.emath.logn(y_logscale_base, ylims[1]),
-        )
-        if scatterxy is not None:
-            scatterxy[:, 1] = np.emath.logn(y_logscale_base, scatterxy[:, 1])
-        if lines_xyxy is not None:
-            lines_xyxy[:, 1] = np.emath.logn(y_logscale_base, lines_xyxy[:, 1])
-            lines_xyxy[:, 3] = np.emath.logn(y_logscale_base, lines_xyxy[:, 3])
-        if scatter_plot_bbs is not None:
-            scatter_plot_bbs[:, 1] = np.emath.logn(
-                y_logscale_base, scatter_plot_bbs[:, 1]
-            )
-            scatter_plot_bbs[:, 3] = np.emath.logn(
-                y_logscale_base, scatter_plot_bbs[:, 3]
-            )
 
     non_overlapping_boxes, overlapping_boxes_inds = get_non_overlapping_boxes(
         original_boxes,
@@ -280,30 +216,6 @@ def allocate_text(
         avoid_label_lines_overlap,
     )
 
-    # Revert scaling
-    if xscale == "log":
-        for i in range(len(non_overlapping_boxes)):
-            b = non_overlapping_boxes[i]
-            non_overlapping_boxes[i] = (
-                x_logscale_base ** b[0],
-                b[1],
-                x_logscale_base ** (b[0] + b[2]) - x_logscale_base ** b[0],
-                b[3],
-                b[4],
-                b[5],
-            )
-    if yscale == "log":
-        for i in range(len(non_overlapping_boxes)):
-            b = non_overlapping_boxes[i]
-            non_overlapping_boxes[i] = (
-                b[0],
-                y_logscale_base ** b[1],
-                b[2],
-                y_logscale_base ** (b[1] + b[3]) - y_logscale_base ** b[1],
-                b[4],
-                b[5],
-            )
-
     # Plot once again
     if verbose:
         print("Plotting")
@@ -318,21 +230,40 @@ def allocate_text(
                 x_coord, y_coord, w, h, x[ind], y[ind]
             )
             if x_near is not None:
+                x_, y_ = display_to_data(
+                    [x_near, x[ind]],
+                    [y_near, y[ind]],
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
                 ax.plot(
-                    [x[ind], x_near],
-                    [y[ind], y_near],
+                    x_,
+                    y_,
                     linewidth=linewidth,
                     c=linecolor[ind],
                     **(plot_kwargs if plot_kwargs is not None else {}),
                 )
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
-        ax.text(x_coord, y_coord, s, size=textsize[ind], c=textcolor[ind], **kwargs)
+        if kwargs.get("ha", None) is not None:
+            if kwargs.get("ha") == "center":
+                x_coord += w / 2
+            elif kwargs.get("ha") == "right":
+                x_coord += w
+        x_coord, y_coord = display_to_data(
+            [x_coord], [y_coord], ax, transform=kwargs.get("transform", None)
+        )
+        ax.text(
+            x_coord[0], y_coord[0], s, size=textsize[ind], c=textcolor[ind], **kwargs
+        )
 
     if draw_all:
         for ind in overlapping_boxes_inds:
+            x_coord, y_coord = display_to_data(
+                [x[ind]], [y[ind]], ax, transform=kwargs.get("transform", None)
+            )
             ax.text(
-                x[ind],
-                y[ind],
+                x_coord[0],
+                y_coord[0],
                 text_list[ind],
                 size=textsize[ind],
                 c=textcolor[ind],
@@ -357,8 +288,8 @@ def lines_to_segments(
         np.ndarray: 2d array of line segments
     """
     assert len(x_lines) == len(y_lines)
-    n_x_segments = np.sum([len(line_x) - 1 for line_x in x_lines])
-    n_y_segments = np.sum([len(line_y) - 1 for line_y in y_lines])
+    n_x_segments = int(np.sum([len(line_x) - 1 for line_x in x_lines]))
+    n_y_segments = int(np.sum([len(line_y) - 1 for line_y in y_lines]))
     assert n_x_segments == n_y_segments
     lines_xyxy = np.zeros((n_x_segments, 4)).astype(np.float64)
     iter = 0
@@ -367,6 +298,32 @@ def lines_to_segments(
             lines_xyxy[iter, :] = [line_x[i], line_y[i], line_x[i + 1], line_y[i + 1]]
             iter += 1
     return lines_xyxy
+
+
+def data_to_display(x, y, ax, transform=None):
+    """Transforms x and y in data coordinates to display coordinates."""
+    xtrans, ytrans = [], []
+    for x_, y_ in zip(x, y):
+        if transform is not None:
+            p = transform._as_mpl_transform(ax).transform_point((x_, y_))
+        else:
+            p = ax.transData.transform((x_, y_))
+        xtrans.append(p[0])
+        ytrans.append(p[1])
+    return np.array(xtrans), np.array(ytrans)
+
+
+def display_to_data(x, y, ax, transform=None):
+    """Transforms x and y in display coordinates to data coordinates."""
+    xtrans, ytrans = [], []
+    for x_, y_ in zip(x, y):
+        if transform is not None:
+            p = transform._as_mpl_transform(ax).inverted().transform_point((x_, y_))
+        else:
+            p = ax.transData.inverted().transform((x_, y_))
+        xtrans.append(p[0])
+        ytrans.append(p[1])
+    return np.array(xtrans), np.array(ytrans)
 
 
 def get_scatter_bbs(sc, ax) -> np.ndarray:
@@ -405,6 +362,6 @@ def get_scatter_bbs(sc, ax) -> np.ndarray:
             result = get_path_collection_extents(
                 transform.frozen(), [p], [t], [o], transOffset.frozen()
             )
-            bboxes.append(result.transformed(ax.transData.inverted()).bounds)
+            bboxes.append(result.bounds)
 
     return np.array(bboxes)
