@@ -5,7 +5,7 @@ from textalloc.non_overlapping_boxes import (
 )
 import numpy as np
 import time
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 try:
@@ -44,7 +44,9 @@ def allocate(
     avoid_label_lines_overlap: bool = False,
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
-):
+) -> Tuple[List[Optional[Tuple[float, float]]],
+           List[Optional[Tuple[Tuple[float, float],
+                               Tuple[float, float]]]]]:
     """Main function of allocating text-boxes in matplotlib plot
 
     Args:
@@ -75,6 +77,10 @@ def allocate(
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
         **kwargs (): kwargs for the plt.text() call.
+
+    Returns:
+        result_text_xy (List[Optional[Tuple[float, float]]]): List of resulting (x,y) positions for text labels used in the plt.text call.
+        result_line (List[Union[Optional[Tuple[float, float], Tuple[float, float]]]]): List of resulting (x,y) pairs used in the plt.plot call for drawing lines.
     """
     t0 = time.time()
     fig = ax.get_figure()
@@ -224,18 +230,27 @@ def allocate(
             print(f"No non overlapping boxes found in direction {direction}")
         else:
             print("No non overlapping boxes found")
-    if draw_lines:
-        for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
-            x_near, y_near = find_nearest_point_on_box(
-                x_coord, y_coord, w, h, x[ind], y[ind]
+
+    result_line: List[Optional[Tuple[Tuple[float, float],
+                                     Tuple[float, float]]]] = [None] * len(text_list)
+
+    for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
+        x_near, y_near = find_nearest_point_on_box(
+            x_coord, y_coord, w, h, x[ind], y[ind]
+        )
+        if x_near is not None:
+            x_, y_ = display_to_data(
+                [x_near, x[ind]],
+                [y_near, y[ind]],
+                ax,
+                transform=kwargs.get("transform", None),
             )
-            if x_near is not None:
-                x_, y_ = display_to_data(
-                    [x_near, x[ind]],
-                    [y_near, y[ind]],
-                    ax,
-                    transform=kwargs.get("transform", None),
-                )
+            result_line[ind] = ((x_[0], x_[1]), (y_[0], y_[1]))
+
+    if draw_lines:
+        for line in result_line:
+            if line is not None:
+                x_, y_ = line
                 ax.plot(
                     x_,
                     y_,
@@ -243,6 +258,9 @@ def allocate(
                     c=linecolor[ind],
                     **(plot_kwargs if plot_kwargs is not None else {}),
                 )
+
+    result_text_xy: List[Optional[Tuple[float, float]]] = [None] * len(text_list)
+
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         if kwargs.get("ha", None) is not None:
             if kwargs.get("ha") == "center":
@@ -252,26 +270,29 @@ def allocate(
         x_coord, y_coord = display_to_data(
             [x_coord], [y_coord], ax, transform=kwargs.get("transform", None)
         )
-        ax.text(
-            x_coord[0], y_coord[0], s, size=textsize[ind], c=textcolor[ind], **kwargs
-        )
+        result_text_xy[ind] = (x_coord[0], y_coord[0])
 
     if draw_all:
         for ind in overlapping_boxes_inds:
             x_coord, y_coord = display_to_data(
                 [x[ind]], [y[ind]], ax, transform=kwargs.get("transform", None)
             )
+            result_text_xy[ind] = (x_coord[0], y_coord[0])
+
+    for ind, xy in enumerate(result_text_xy):
+        if xy is not None:
             ax.text(
-                x_coord[0],
-                y_coord[0],
+                xy[0],
+                xy[1],
                 text_list[ind],
                 size=textsize[ind],
                 c=textcolor[ind],
                 **kwargs,
             )
-
     if verbose:
         print(f"Finished in {time.time()-t0}s")
+
+    return result_text_xy, result_line
 
 
 def allocate_text(

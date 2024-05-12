@@ -110,6 +110,9 @@ plot_kwargs: (dict), default None
     kwargs for the plt.text() call.
     If transform is used, it only needs to be provided here, i.e. not also in plot_kwargs.
 ```
+
+The allocate call returns a tuple containing the resulting positions used to plot the text labels and the connecting label lines
+
 # Implementation and speed
 
 The implementation aims to plot as many text-boxes as possible in the free space in the plot. There are three main steps of the algorithm:
