@@ -28,7 +28,7 @@ def allocate(
     scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
     scatter_plot: object = None,
     text_scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
-    textsize: Union[int, List[int]] = 10,
+    textsize: Union[int, float, List[int], List[float]] = 10,
     margin: float = 0.008,
     min_distance: float = 0.013,
     max_distance: float = 0.2,
@@ -61,7 +61,7 @@ def allocate(
         scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of all scattered objects in plot list of 1d arrays/lists. Defaults to None.
         scatter_plot (__type__, optional): if possible, provide a scatterplot object (scatter_plot=ax.scatter(...)) for more exact placement. Defaults to None.
         text_scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of text scattered objects in plot list of 1d arrays/lists. Defaults to None.
-        textsize (Union[int, List[int]], optional): size of text. Defaults to 10.
+        textsize (Union[int, float, List[int], List[float]], optional): size of text. Defaults to 10.
         margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.008.
         min_distance (float, optional): parameter for min distance between text and origin. Defaults to 0.015.
         max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.2.
@@ -125,7 +125,7 @@ def allocate(
             y_lines_temp.append(yl)
         x_lines, y_lines = x_lines_temp, y_lines_temp
     assert min_distance <= max_distance
-    if type(textsize) is not int:
+    if isinstance(textsize, list):
         assert len(textsize) == len(x)
     else:
         textsize = [textsize for _ in range(len(x))]
