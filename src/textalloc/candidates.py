@@ -1,3 +1,4 @@
+import math
 import numpy as np
 
 
@@ -134,23 +135,29 @@ def generate_candidates(
     if direction is not None:
         candidates = np.vstack([candidates1, candidates])
     if nbr_candidates > candidates.shape[0]:
-        candidates2 = np.zeros((nbr_candidates - candidates.shape[0], 4))
-        n_gen = candidates2.shape[0]
-        for i in range(n_gen):
-            frac = i / n_gen
-            x_sample = np.random.uniform(
-                x - frac * xmaxdistance, x + frac * xmaxdistance
-            )
-            y_sample = np.random.uniform(
-                y - frac * ymaxdistance, y + frac * ymaxdistance
-            )
-            candidates2[i, :] = [
-                x_sample - w / 2,
-                y_sample - h / 2,
-                x_sample + w / 2,
-                y_sample + h / 2,
-            ]
+        area = xmaxdistance * ymaxdistance - xmindistance*ymindistance
+        sampling_size = np.sqrt(area/nbr_candidates)
+
+        n_samples_x = math.ceil(xmaxdistance/sampling_size)
+        n_samples_y = math.ceil(ymaxdistance/sampling_size)
+
+        grid_x, grid_y = np.meshgrid(np.linspace(-xmaxdistance, xmaxdistance, n_samples_x),
+                                     np.linspace(-ymaxdistance, ymaxdistance, n_samples_y),
+                                     indexing="xy")
+        grid = np.stack((grid_x, grid_y), axis=-1).reshape(-1, 2)
+        grid = grid[np.logical_or(np.abs(grid[:, 0]) > xmindistance,
+                                  np.abs(grid[:, 1]) > ymindistance)]
+        grid = grid[np.argsort(grid[:, 0]**2 + grid[:, 1]**2)]
+
+        candidates2 = np.stack((grid[:, 0] + x - w / 2,
+                                grid[:, 1] + y - h / 2,
+                                grid[:, 0] + x + w / 2,
+                                grid[:, 1] + y + h / 2), axis=-1)
+
+        candidates2 = candidates2[:nbr_candidates - candidates.shape[0]]
+
         candidates = np.vstack([candidates, candidates2])
+
     if direction is not None:
         if direction == "south":
             candidates = candidates[(candidates[:, 1] < y) & (candidates[:, 3] < y), :]
