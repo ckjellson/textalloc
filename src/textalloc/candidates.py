@@ -1,3 +1,25 @@
+# MIT License
+
+# Copyright (c) 2022 Christoffer Kjellson
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import math
 import numpy as np
 
@@ -135,26 +157,36 @@ def generate_candidates(
     if direction is not None:
         candidates = np.vstack([candidates1, candidates])
     if nbr_candidates > candidates.shape[0]:
-        area = xmaxdistance * ymaxdistance - xmindistance*ymindistance
-        sampling_size = np.sqrt(area/nbr_candidates)
+        area = xmaxdistance * ymaxdistance - xmindistance * ymindistance
+        sampling_size = np.sqrt(area / nbr_candidates)
 
-        n_samples_x = math.ceil(xmaxdistance/sampling_size)
-        n_samples_y = math.ceil(ymaxdistance/sampling_size)
+        n_samples_x = math.ceil(xmaxdistance / sampling_size)
+        n_samples_y = math.ceil(ymaxdistance / sampling_size)
 
-        grid_x, grid_y = np.meshgrid(np.linspace(-xmaxdistance, xmaxdistance, n_samples_x),
-                                     np.linspace(-ymaxdistance, ymaxdistance, n_samples_y),
-                                     indexing="xy")
+        grid_x, grid_y = np.meshgrid(
+            np.linspace(-xmaxdistance, xmaxdistance, n_samples_x),
+            np.linspace(-ymaxdistance, ymaxdistance, n_samples_y),
+            indexing="xy",
+        )
         grid = np.stack((grid_x, grid_y), axis=-1).reshape(-1, 2)
-        grid = grid[np.logical_or(np.abs(grid[:, 0]) > xmindistance,
-                                  np.abs(grid[:, 1]) > ymindistance)]
-        grid = grid[np.argsort(grid[:, 0]**2 + grid[:, 1]**2)]
+        grid = grid[
+            np.logical_or(
+                np.abs(grid[:, 0]) > xmindistance, np.abs(grid[:, 1]) > ymindistance
+            )
+        ]
+        grid = grid[np.argsort(grid[:, 0] ** 2 + grid[:, 1] ** 2)]
 
-        candidates2 = np.stack((grid[:, 0] + x - w / 2,
-                                grid[:, 1] + y - h / 2,
-                                grid[:, 0] + x + w / 2,
-                                grid[:, 1] + y + h / 2), axis=-1)
+        candidates2 = np.stack(
+            (
+                grid[:, 0] + x - w / 2,
+                grid[:, 1] + y - h / 2,
+                grid[:, 0] + x + w / 2,
+                grid[:, 1] + y + h / 2,
+            ),
+            axis=-1,
+        )
 
-        candidates2 = candidates2[:nbr_candidates - candidates.shape[0]]
+        candidates2 = candidates2[: nbr_candidates - candidates.shape[0]]
 
         candidates = np.vstack([candidates, candidates2])
 

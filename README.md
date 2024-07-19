@@ -225,37 +225,6 @@ plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/bar_before.png)|![](images/bar_after.png)
 
-```
-import textalloc as ta
-import numpy as np
-import matplotlib.pyplot as plt
-
-fig = plt.figure(figsize=(10,10), dpi=200)
-ax = plt.axes(projection='3d')
-nPoints = 300
-nLines = 50
-z = 15 * np.random.random(nPoints)
-x = np.sin(z) + 0.1 * np.random.randn(nPoints)/2
-y = np.cos(z) + 0.1 * np.random.randn(nPoints)/2
-x_lines = [[_x, _x] for _x in x[:nLines]]
-y_lines = [[_y, _y] for _y in y[:nLines]]
-z_lines = [[0, _z] for _z in z[:nLines]]
-text_list = [f'Text{i}' for i in range(len(x))]
-ax.scatter(x,y,z,c=z, cmap="brg", alpha=1)
-for xl,yl,zl in zip(x_lines, y_lines, z_lines):
-        ax.plot(xl, yl, zl, "k--")
-ta.allocate(ax,x,y,text_list,z=z,
-        x_scatter=x, y_scatter=y, z_scatter=z,
-        x_lines=x_lines, y_lines=y_lines, z_lines=z_lines,
-        avoid_label_lines_overlap=True,
-        draw_all=False, linewidth=0.7, textsize=8, max_distance=0.07)
-plt.show()
-```
-
-plt.text|textalloc
-:-------------------------:|:-------------------------:
-![](images/3dstem_before.png)|![](images/3dstem_after.png)
-
 ## Plotting on images and using transforms
 
 textalloc now also supports plotting on images and using transforms. Below is an eample of using the PlateCarree transform to plot on top of a downloaded OSM-map (thank you @nebukadnezar for the example).
@@ -304,4 +273,40 @@ ta.allocate(ax,x,y,
             avoid_label_lines_overlap=True)
 plt.show()
 ```
-![](images/cartopy.png)
+
+<div align="center">
+	<img src="images/cartopy.png">
+</div>
+
+## Plotting in 3D
+
+```
+import textalloc as ta
+import numpy as np
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(10,10), dpi=200)
+ax = plt.axes(projection='3d')
+nPoints = 300
+nLines = 50
+z = 15 * np.random.random(nPoints)
+x = np.sin(z) + 0.1 * np.random.randn(nPoints)/2
+y = np.cos(z) + 0.1 * np.random.randn(nPoints)/2
+x_lines = [[_x, _x] for _x in x[:nLines]]
+y_lines = [[_y, _y] for _y in y[:nLines]]
+z_lines = [[0, _z] for _z in z[:nLines]]
+text_list = [f'Text{i}' for i in range(len(x))]
+ax.scatter(x,y,z,c=z, cmap="brg", alpha=1)
+for xl,yl,zl in zip(x_lines, y_lines, z_lines):
+        ax.plot(xl, yl, zl, "k--")
+ta.allocate(ax,x,y,text_list,z=z,
+        x_scatter=x, y_scatter=y, z_scatter=z,
+        x_lines=x_lines, y_lines=y_lines, z_lines=z_lines,
+        avoid_label_lines_overlap=True,
+        draw_all=False, linewidth=0.7, textsize=8, max_distance=0.07)
+plt.show()
+```
+
+plt.text|textalloc
+:-------------------------:|:-------------------------:
+![](images/3dstem_before.png)|![](images/3dstem_after.png)
