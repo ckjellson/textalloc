@@ -1,13 +1,23 @@
 # textalloc - Efficient matplotlib Text Allocation
 
-plt.text|textalloc (2.1s)
+plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/scattertext_before.png)|![](images/scattertext_after.png)
+![](images/3dstem_before.png)|![](images/3dstem_after.png)
 <div align="center">
-Scatterplot design from scattertext (https://github.com/JasonKessler/scattertext)
+Scatterplot design in top row from scattertext (https://github.com/JasonKessler/scattertext)
 </div>
 
+# Table of contents
+1. [Quick-start](#quickstart)
+2. [Features](#features)
+3. [Parameters](#parameters)
+4. [Implementation and speed](#implementation)
+5. [Examples](#examples)
+
 # Quick-start
+
+textalloc allocates text labels in matplotlib plots and is an alternative to adjustText (https://github.com/Phlya/adjustText).
 
 ## Installation
 
@@ -40,7 +50,25 @@ plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/scatter_before.png)|![](images/scatter_after.png)
 
-## Parameters
+# Features
+
+Avoids the following types of text label overlaps:
+- Lines
+- Points
+- Plot boundary
+- Other text labels
+- Arbitrary objects when providing the scatter plot object
+
+Other supported features:
+1. Setting min and max distances between text labels and objects
+2. Drawing lines between label and the corresponding position, optionally also avoiding overlap with these lines
+3. Draw all text labels, or only the subset that has no internal overlap
+3. Setting direction of text labels w.r.t. the corresponding positions
+4. Plotting in 3D by providing z-coordinates for a 3D axes
+5. Plotting on images
+6. Using custom transforms
+
+# Parameters
 
 Text-boxes input parameters are x, y and text_list, which define the text-strings to be plotted and the positions that the texts should point to.
 x_scatter, y_scatter, x_lines and y_lines define all points and lines in the plot that should not overlap with the text-boxes. Note that the scattered points do not have to be the same as x and y for the text-boxes, but can include more, or different scattered points.
@@ -54,14 +82,20 @@ y: (array-like):
     y-coordinates of texts.
 text_list: (array-like):
     list of texts.
+z: (array-like), default None
+    z-coordinates of texts in case of plotting in 3D.
 x_scatter: (array-like), default None
     x-coordinates of all scattered points.
 y_scatter: (array-like), default None
     y-coordinates of all scattered points.
+z_scatter: (array-like), default None
+    z-coordinates of all scattered points in case of plotting in 3D.
 x_lines: (array-like), default None
     pairs of x-coordinates of all lines in the plot (start and endpoint).
 y_lines: (array-like), default None
     pairs of y-coordinates of all lines in the plot (start and endpoint).
+z_lines: (array-like), default None
+    pairs of z-coordinates of all lines in the plot (start and endpoint) in case of plotting in 3D.
 scatter_sizes: (array-like), default None
     sizes of all scattered objects in plot list of 1d arrays/lists.
 scatter_plot:
@@ -111,7 +145,7 @@ plot_kwargs: (dict), default None
     If transform is used, it only needs to be provided here, i.e. not also in plot_kwargs.
 ```
 
-The allocate call returns a tuple containing the resulting positions used to plot the text labels and the connecting label lines
+The allocate call returns a tuple containing the resulting positions used to plot the text labels and the connecting label lines.
 
 # Implementation and speed
 
@@ -134,9 +168,9 @@ candidates[:, 0][:, None] - xfrac > box_arr[:, 2]
 
 The code compares xmin coordinates of all candidates with xmax coordinates of all allocated boxes resulting in a boolean matrix of shape (N_candidates, N_allocated) by use of indexing `[:, None]`.
 
-# Types of overlap supported
+# Examples
 
-textalloc supports avoiding overlap with points, lines, and the plot boundary in addition to other text-boxes. See examples below and `demo.py` for all examples:
+textalloc supports avoiding overlap with points, lines, and the plot boundary in addition to other text-boxes. See examples below and `demo.py` for all examples.
 
 ```
 import textalloc as ta
@@ -159,7 +193,7 @@ ta.allocate(ax,x_line,y_line,
 plt.show()
 ```
 
-plt.text|textalloc (0.2s)
+plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/scatterlines_before.png)|![](images/scatterlines_after.png)
 
@@ -187,11 +221,42 @@ ta.allocate(ax,x_data,y_data,
 plt.show()
 ```
 
-plt.text|textalloc (0.7s)
+plt.text|textalloc
 :-------------------------:|:-------------------------:
 ![](images/bar_before.png)|![](images/bar_after.png)
 
-# Plotting on images and using transforms
+```
+import textalloc as ta
+import numpy as np
+import matplotlib.pyplot as plt
+
+fig = plt.figure(figsize=(10,10), dpi=200)
+ax = plt.axes(projection='3d')
+nPoints = 300
+nLines = 50
+z = 15 * np.random.random(nPoints)
+x = np.sin(z) + 0.1 * np.random.randn(nPoints)/2
+y = np.cos(z) + 0.1 * np.random.randn(nPoints)/2
+x_lines = [[_x, _x] for _x in x[:nLines]]
+y_lines = [[_y, _y] for _y in y[:nLines]]
+z_lines = [[0, _z] for _z in z[:nLines]]
+text_list = [f'Text{i}' for i in range(len(x))]
+ax.scatter(x,y,z,c=z, cmap="brg", alpha=1)
+for xl,yl,zl in zip(x_lines, y_lines, z_lines):
+        ax.plot(xl, yl, zl, "k--")
+ta.allocate(ax,x,y,text_list,z=z,
+        x_scatter=x, y_scatter=y, z_scatter=z,
+        x_lines=x_lines, y_lines=y_lines, z_lines=z_lines,
+        avoid_label_lines_overlap=True,
+        draw_all=False, linewidth=0.7, textsize=8, max_distance=0.07)
+plt.show()
+```
+
+plt.text|textalloc
+:-------------------------:|:-------------------------:
+![](images/3dstem_before.png)|![](images/3dstem_after.png)
+
+## Plotting on images and using transforms
 
 textalloc now also supports plotting on images and using transforms. Below is an eample of using the PlateCarree transform to plot on top of a downloaded OSM-map (thank you @nebukadnezar for the example).
 

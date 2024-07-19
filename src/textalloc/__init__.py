@@ -4,6 +4,7 @@ from textalloc.non_overlapping_boxes import (
     find_nearest_point_on_box,
 )
 import numpy as np
+from mpl_toolkits.mplot3d import proj3d
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
@@ -21,10 +22,13 @@ def allocate(
     x: Union[np.ndarray, List[float]],
     y: Union[np.ndarray, List[float]],
     text_list: List[str],
+    z: Union[np.ndarray, List[float]] = None,
     x_scatter: Union[np.ndarray, List[float]] = None,
     y_scatter: Union[np.ndarray, List[float]] = None,
+    z_scatter: Union[np.ndarray, List[float]] = None,
     x_lines: List[Union[np.ndarray, List[float]]] = None,
     y_lines: List[Union[np.ndarray, List[float]]] = None,
+    z_lines: List[Union[np.ndarray, List[float]]] = None,
     scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
     scatter_plot: object = None,
     text_scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
@@ -44,9 +48,10 @@ def allocate(
     avoid_label_lines_overlap: bool = False,
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
-) -> Tuple[List[Optional[Tuple[float, float]]],
-           List[Optional[Tuple[Tuple[float, float],
-                               Tuple[float, float]]]]]:
+) -> Tuple[
+    List[Optional[Tuple[float, float]]],
+    List[Optional[Tuple[Tuple[float, float], Tuple[float, float]]]],
+]:
     """Main function of allocating text-boxes in matplotlib plot
 
     Args:
@@ -54,10 +59,13 @@ def allocate(
         x (Union[np.ndarray, List[float]]): x-coordinates of texts 1d array/list.
         y (Union[np.ndarray, List[float]]): y-coordinates of texts 1d array/list.
         text_list (List[str]): list of texts.
+        z (Union[np.ndarray, List[float]]): z-coordinates of texts 1d array/list in case of 3D plotting.
         x_scatter (Union[np.ndarray, List[float]], optional): x-coordinates of all scattered points in plot 1d array/list. Defaults to None.
         y_scatter (Union[np.ndarray, List[float]], optional): y-coordinates of all scattered points in plot 1d array/list. Defaults to None.
+        z_scatter (Union[np.ndarray, List[float]], optional): z-coordinates of all scattered points in plot 1d array/list in case of 3D plotting. Defaults to None.
         x_lines (List[Union[np.ndarray, List[float]]], optional): x-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
         y_lines (List[Union[np.ndarray, List[float]]], optional): y-coordinates of all lines in plot list of 1d arrays/lists. Defaults to None.
+        z_lines (List[Union[np.ndarray, List[float]]], optional): z-coordinates of all lines in plot list of 1d arrays/lists in case of 3D plotting. Defaults to None.
         scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of all scattered objects in plot list of 1d arrays/lists. Defaults to None.
         scatter_plot (__type__, optional): if possible, provide a scatterplot object (scatter_plot=ax.scatter(...)) for more exact placement. Defaults to None.
         text_scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of text scattered objects in plot list of 1d arrays/lists. Defaults to None.
@@ -93,34 +101,77 @@ def allocate(
     aspect_ratio = fig.get_size_inches()[0] / fig.get_size_inches()[1]
     xlims = ax.get_xlim()
     ylims = ax.get_ylim()
-    xlims, ylims = data_to_display(xlims, ylims, ax)
+    if z is not None:
+        # In case of a 3D plot the limits are fixed here to avoid projection issues further down.
+        zlims = ax.get_zlim()
+        ax.set_xlim(xlims)
+        ax.set_ylim(ylims)
+        ax.set_zlim(zlims)
+        xlims, ylims, _ = data_to_display(xlims, ylims, zlims, ax)
+    else:
+        xlims, ylims, _ = data_to_display(xlims, ylims, None, ax)
 
     # Ensure good inputs and transform inputs
     assert len(x) == len(y)
     x = np.array(x)
     y = np.array(y)
+    if z is not None:
+        # This is a 3D plot
+        z = np.array(z)
+        assert kwargs.get("transform", None) is None
+        assert len(x) == len(z)
     if scatter_sizes is not None:
         scatter_sizes = np.array(scatter_sizes)
     if text_scatter_sizes is not None:
         text_scatter_sizes = np.array(text_scatter_sizes)
     if x_scatter is not None:
         assert y_scatter is not None
+    if z_scatter is not None:
+        assert x_scatter is not None
+        assert len(z_scatter) == len(x_scatter)
+        assert (
+            kwargs.get("transform", None) is None
+        )  # Custom transform not supported in 3D.
     if y_scatter is not None:
         assert x_scatter is not None
         assert len(y_scatter) == len(x_scatter)
-        x_scatter, y_scatter = data_to_display(
-            x_scatter, y_scatter, ax, transform=kwargs.get("transform", None)
+        x_scatter, y_scatter, z_scatter = data_to_display(
+            x_scatter,
+            y_scatter,
+            z_scatter,
+            ax,
+            transform=kwargs.get("transform", None),
         )
     if x_lines is not None:
         assert y_lines is not None
+    if z_lines is not None:
+        assert y_lines is not None
+        assert all(
+            [len(z_line) == len(y_line) for z_line, y_line in zip(z_lines, y_lines)]
+        )
     if y_lines is not None:
         assert x_lines is not None
         assert all(
             [len(x_line) == len(y_line) for x_line, y_line in zip(x_lines, y_lines)]
         )
         x_lines_temp, y_lines_temp = [], []
-        for x_line, y_line in zip(x_lines, y_lines):
-            xl, yl = data_to_display(x_line, y_line, ax)
+        for i in range(len(x_lines)):
+            if z_lines is not None:
+                xl, yl, _ = data_to_display(
+                    x_lines[i],
+                    y_lines[i],
+                    z_lines[i],
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
+            else:
+                xl, yl, _ = data_to_display(
+                    x_lines[i],
+                    y_lines[i],
+                    None,
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
             x_lines_temp.append(xl)
             y_lines_temp.append(yl)
         x_lines, y_lines = x_lines_temp, y_lines_temp
@@ -157,6 +208,8 @@ def allocate(
         text_list = [text_list[i] for i in randinds]
         x = x[randinds]
         y = y[randinds]
+        if z is not None:
+            z = z[randinds]
         if text_scatter_sizes is not None:
             text_scatter_sizes = text_scatter_sizes[randinds]
         textsize = [textsize[i] for i in randinds]
@@ -167,20 +220,32 @@ def allocate(
     if verbose:
         print("Creating boxes")
     original_boxes = []
-    for x_coord, y_coord, s, ts in tqdm(
-        zip(x, y, text_list, textsize), disable=not verbose
-    ):
-        ann = ax.text(x_coord, y_coord, s, size=ts, **kwargs)
-        box = ann.get_tightbbox(fig.canvas.get_renderer())
+    for i in tqdm(range(len(x)), disable=not verbose):
+        ann = None
+        if z is not None:
+            ann = ax.text(x[i], y[i], z[i], text_list[i], size=textsize[i], **kwargs)
+            x_, y_, z_ = data_to_display(
+                [x[i]],
+                [y[i]],
+                [z[i]],
+                ax,
+                transform=kwargs.get("transform", None),
+            )
+        else:
+            ann = ax.text(x[i], y[i], text_list[i], size=textsize[i], **kwargs)
+            x_, y_, z_ = data_to_display(
+                [x[i]], [y[i]], None, ax, transform=kwargs.get("transform", None)
+            )
+        box = ann.get_window_extent(fig.canvas.get_renderer())
         w, h = box.x1 - box.x0, box.y1 - box.y0
-        x_, y_ = data_to_display(
-            [x_coord], [y_coord], ax, transform=kwargs.get("transform", None)
-        )
-        original_boxes.append((x_[0], y_[0], w, h, s))
+        if z_ is not None:
+            original_boxes.append((x_[0], y_[0], w, h, textsize[i]))
+        else:
+            original_boxes.append((x_[0], y_[0], w, h, textsize[i]))
         ann.remove()
 
     # Transform datapoints as well
-    x, y = data_to_display(x, y, ax, transform=kwargs.get("transform", None))
+    x, y, z = data_to_display(x, y, z, ax, transform=kwargs.get("transform", None))
 
     # If scatterplot exists, get scatter bboxes
     scatter_plot_bbs = None
@@ -231,68 +296,127 @@ def allocate(
         else:
             print("No non overlapping boxes found")
 
-    result_line: List[Optional[Tuple[Tuple[float, float],
-                                     Tuple[float, float]]]] = [None] * len(text_list)
-
+    # Get lines
+    result_line: List[Optional[Tuple[Tuple[float, float], Tuple[float, float]]]] = [
+        None
+    ] * len(text_list)
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         x_near, y_near = find_nearest_point_on_box(
             x_coord, y_coord, w, h, x[ind], y[ind]
         )
         if x_near is not None:
-            x_, y_ = display_to_data(
-                [x_near, x[ind]],
-                [y_near, y[ind]],
-                ax,
-                transform=kwargs.get("transform", None),
-            )
-            result_line[ind] = ((x_[0], x_[1]), (y_[0], y_[1]))
+            if z is not None:
+                x_, y_, z_ = display_to_data(
+                    [x_near, x[ind]],
+                    [y_near, y[ind]],
+                    [z[ind], z[ind]],
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
+                result_line[ind] = ((x_[0], x_[1]), (y_[0], y_[1]), (z_[0], z_[1]))
+            else:
+                x_, y_, z_ = display_to_data(
+                    [x_near, x[ind]],
+                    [y_near, y[ind]],
+                    None,
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
+                result_line[ind] = ((x_[0], x_[1]), (y_[0], y_[1]), None)
 
+    # Draw lines
     if draw_lines:
         for line in result_line:
             if line is not None:
-                x_, y_ = line
-                ax.plot(
-                    x_,
-                    y_,
-                    linewidth=linewidth,
-                    c=linecolor[ind],
-                    **(plot_kwargs if plot_kwargs is not None else {}),
-                )
+                x_, y_, z_ = line
+                if z_ is not None:
+                    ax.plot(
+                        x_,
+                        y_,
+                        z_,
+                        linewidth=linewidth,
+                        c=linecolor[ind],
+                        **(plot_kwargs if plot_kwargs is not None else {}),
+                    )
+                else:
+                    ax.plot(
+                        x_,
+                        y_,
+                        linewidth=linewidth,
+                        c=linecolor[ind],
+                        **(plot_kwargs if plot_kwargs is not None else {}),
+                    )
 
-    result_text_xy: List[Optional[Tuple[float, float]]] = [None] * len(text_list)
-
+    # Get texts
+    result_text_xyz: List[Optional[Tuple[float, float]]] = [None] * len(text_list)
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
         if kwargs.get("ha", None) is not None:
             if kwargs.get("ha") == "center":
                 x_coord += w / 2
             elif kwargs.get("ha") == "right":
                 x_coord += w
-        x_coord, y_coord = display_to_data(
-            [x_coord], [y_coord], ax, transform=kwargs.get("transform", None)
-        )
-        result_text_xy[ind] = (x_coord[0], y_coord[0])
+        if z is not None:
+            x_coord, y_coord, z_coord = display_to_data(
+                [x_coord],
+                [y_coord],
+                [z[ind]],
+                ax,
+                transform=kwargs.get("transform", None),
+            )
+            result_text_xyz[ind] = (x_coord[0], y_coord[0], z_coord[0])
+        else:
+            x_coord, y_coord, _ = display_to_data(
+                [x_coord], [y_coord], None, ax, transform=kwargs.get("transform", None)
+            )
+            result_text_xyz[ind] = (x_coord[0], y_coord[0], None)
 
     if draw_all:
         for ind in overlapping_boxes_inds:
-            x_coord, y_coord = display_to_data(
-                [x[ind]], [y[ind]], ax, transform=kwargs.get("transform", None)
-            )
-            result_text_xy[ind] = (x_coord[0], y_coord[0])
+            if z is not None:
+                x_coord, y_coord, z_coord = display_to_data(
+                    [x[ind]],
+                    [y[ind]],
+                    [z[ind]],
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
+                result_text_xyz[ind] = (x_coord[0], y_coord[0], z_coord[0])
+            else:
+                x_coord, y_coord, z_coord = display_to_data(
+                    [x[ind]],
+                    [y[ind]],
+                    None,
+                    ax,
+                    transform=kwargs.get("transform", None),
+                )
+                result_text_xyz[ind] = (x_coord[0], y_coord[0], None)
 
-    for ind, xy in enumerate(result_text_xy):
-        if xy is not None:
-            ax.text(
-                xy[0],
-                xy[1],
-                text_list[ind],
-                size=textsize[ind],
-                c=textcolor[ind],
-                **kwargs,
-            )
+    # Draw texts
+    for ind, xyz in enumerate(result_text_xyz):
+        if xyz is not None:
+            if z is not None:
+                ax.text(
+                    xyz[0],
+                    xyz[1],
+                    xyz[2],
+                    text_list[ind],
+                    size=textsize[ind],
+                    c=textcolor[ind],
+                    **kwargs,
+                )
+            else:
+                ax.text(
+                    xyz[0],
+                    xyz[1],
+                    text_list[ind],
+                    size=textsize[ind],
+                    c=textcolor[ind],
+                    **kwargs,
+                )
     if verbose:
         print(f"Finished in {time.time()-t0}s")
 
-    return result_text_xy, result_line
+    return result_text_xyz, result_line
 
 
 def allocate_text(
@@ -335,30 +459,43 @@ def lines_to_segments(
     return lines_xyxy
 
 
-def data_to_display(x, y, ax, transform=None):
+def data_to_display(x, y, z, ax, transform=None):
     """Transforms x and y in data coordinates to display coordinates."""
-    xtrans, ytrans = [], []
-    for x_, y_ in zip(x, y):
+    xtrans, ytrans, ztrans = [], [], []
+    for i in range(len(x)):
         if transform is not None:
-            p = transform._as_mpl_transform(ax).transform_point((x_, y_))
+            p = transform._as_mpl_transform(ax).transform_point((x[i], y[i]))
+        elif z is not None:
+            proj = proj3d.proj_transform(x[i], y[i], z[i], ax.get_proj())
+            p = ax.transData.transform((proj[:2]))
+            ztrans.append(proj[2])
         else:
-            p = ax.transData.transform((x_, y_))
+            p = ax.transData.transform((x[i], y[i]))
         xtrans.append(p[0])
         ytrans.append(p[1])
-    return np.array(xtrans), np.array(ytrans)
+    if z is not None:
+        return np.array(xtrans), np.array(ytrans), np.array(ztrans)
+    return np.array(xtrans), np.array(ytrans), None
 
 
-def display_to_data(x, y, ax, transform=None):
+def display_to_data(x, y, z, ax, transform=None):
     """Transforms x and y in display coordinates to data coordinates."""
-    xtrans, ytrans = [], []
-    for x_, y_ in zip(x, y):
+    xtrans, ytrans, ztrans = [], [], []
+    for i in range(len(x)):
         if transform is not None:
-            p = transform._as_mpl_transform(ax).inverted().transform_point((x_, y_))
+            p = transform._as_mpl_transform(ax).inverted().transform_point((x[i], y[i]))
+        elif z is not None:
+            x_, y_ = ax.transData.inverted().transform((x[i], y[i]))
+            p = proj3d.inv_transform(x_, y_, z[i], ax.get_proj())
         else:
-            p = ax.transData.inverted().transform((x_, y_))
+            p = ax.transData.inverted().transform((x[i], y[i]))
         xtrans.append(p[0])
         ytrans.append(p[1])
-    return np.array(xtrans), np.array(ytrans)
+        if z is not None:
+            ztrans.append(p[2])
+    if z is not None:
+        return np.array(xtrans), np.array(ytrans), np.array(ztrans)
+    return np.array(xtrans), np.array(ytrans), None
 
 
 def get_scatter_bbs(sc, ax) -> np.ndarray:
