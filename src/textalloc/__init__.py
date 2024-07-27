@@ -71,8 +71,10 @@ def allocate(
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
 ) -> Tuple[
-    List[Optional[Tuple[float, float]]],
-    List[Optional[Tuple[Tuple[float, float], Tuple[float, float]]]],
+    List[Tuple[float, float]],
+    List[Tuple[Tuple[float, float], Tuple[float, float]]],
+    List[object],
+    List[object],
 ]:
     """Main function of allocating text-boxes in matplotlib plot
 
@@ -109,8 +111,10 @@ def allocate(
         **kwargs (): kwargs for the plt.text() call.
 
     Returns:
-        result_text_xy (List[Optional[Tuple[float, float]]]): List of resulting (x,y) positions for text labels used in the plt.text call.
-        result_line (List[Union[Optional[Tuple[float, float], Tuple[float, float]]]]): List of resulting (x,y) pairs used in the plt.plot call for drawing lines.
+        result_text_xy (List[Tuple[float, float]]): List of resulting (x,y) positions for text labels used in the plt.text call.
+        result_lines (List[Tuple[float, float], Tuple[float, float]]): List of resulting (x,y) pairs used in the plt.plot call for drawing lines.
+        text_objects (List[plt.Text]): List of plt.Text objects from the plt.text calls.
+        line_objects (List[plt.Line2D]): List of plt.Line2D objects from the plt.plot calls.
     """
     t0 = time.time()
     fig = ax.get_figure()
@@ -319,7 +323,7 @@ def allocate(
             print("No non overlapping boxes found")
 
     # Get lines
-    result_line: List[Optional[Tuple[Tuple[float, float], Tuple[float, float]]]] = [
+    result_lines: List[Optional[Tuple[Tuple[float, float], Tuple[float, float]]]] = [
         None
     ] * len(text_list)
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
@@ -335,7 +339,7 @@ def allocate(
                     ax,
                     transform=kwargs.get("transform", None),
                 )
-                result_line[ind] = ((x_[0], x_[1]), (y_[0], y_[1]), (z_[0], z_[1]))
+                result_lines[ind] = ((x_[0], x_[1]), (y_[0], y_[1]), (z_[0], z_[1]))
             else:
                 x_, y_, z_ = display_to_data(
                     [x_near, x[ind]],
@@ -344,29 +348,34 @@ def allocate(
                     ax,
                     transform=kwargs.get("transform", None),
                 )
-                result_line[ind] = ((x_[0], x_[1]), (y_[0], y_[1]), None)
+                result_lines[ind] = ((x_[0], x_[1]), (y_[0], y_[1]), None)
 
     # Draw lines
+    line_objects = []
     if draw_lines:
-        for line in result_line:
+        for line in result_lines:
             if line is not None:
                 x_, y_, z_ = line
                 if z_ is not None:
-                    ax.plot(
-                        x_,
-                        y_,
-                        z_,
-                        linewidth=linewidth,
-                        c=linecolor[ind],
-                        **(plot_kwargs if plot_kwargs is not None else {}),
+                    line_objects.append(
+                        ax.plot(
+                            x_,
+                            y_,
+                            z_,
+                            linewidth=linewidth,
+                            c=linecolor[ind],
+                            **(plot_kwargs if plot_kwargs is not None else {}),
+                        )[0]
                     )
                 else:
-                    ax.plot(
-                        x_,
-                        y_,
-                        linewidth=linewidth,
-                        c=linecolor[ind],
-                        **(plot_kwargs if plot_kwargs is not None else {}),
+                    line_objects.append(
+                        ax.plot(
+                            x_,
+                            y_,
+                            linewidth=linewidth,
+                            c=linecolor[ind],
+                            **(plot_kwargs if plot_kwargs is not None else {}),
+                        )[0]
                     )
 
     # Get texts
@@ -414,31 +423,36 @@ def allocate(
                 result_text_xyz[ind] = (x_coord[0], y_coord[0], None)
 
     # Draw texts
+    text_objects = []
     for ind, xyz in enumerate(result_text_xyz):
         if xyz is not None:
             if z is not None:
-                ax.text(
-                    xyz[0],
-                    xyz[1],
-                    xyz[2],
-                    text_list[ind],
-                    size=textsize[ind],
-                    c=textcolor[ind],
-                    **kwargs,
+                text_objects.append(
+                    ax.text(
+                        xyz[0],
+                        xyz[1],
+                        xyz[2],
+                        text_list[ind],
+                        size=textsize[ind],
+                        c=textcolor[ind],
+                        **kwargs,
+                    )
                 )
             else:
-                ax.text(
-                    xyz[0],
-                    xyz[1],
-                    text_list[ind],
-                    size=textsize[ind],
-                    c=textcolor[ind],
-                    **kwargs,
+                text_objects.append(
+                    ax.text(
+                        xyz[0],
+                        xyz[1],
+                        text_list[ind],
+                        size=textsize[ind],
+                        c=textcolor[ind],
+                        **kwargs,
+                    )
                 )
     if verbose:
         print(f"Finished in {time.time()-t0}s")
 
-    return result_text_xyz, result_line
+    return result_text_xyz, result_lines, text_objects, line_objects
 
 
 def allocate_text(

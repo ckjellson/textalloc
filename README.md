@@ -143,6 +143,12 @@ plot_kwargs: (dict), default None
 **kwargs: ()
     kwargs for the plt.text() call.
     If transform is used, it only needs to be provided here, i.e. not also in plot_kwargs.
+
+Returns:
+    result_text_xy (List[Tuple[float, float]]): List of resulting (x,y) positions for text labels used in the plt.text call.
+    result_lines (List[Tuple[float, float], Tuple[float, float]]): List of resulting (x,y) pairs used in the plt.plot call for drawing lines.
+    text_objects (List[plt.Text]): List of plt.Text objects from the plt.text calls.
+    line_objects (List[plt.Line2D]): List of plt.Line2D objects from the plt.plot calls.
 ```
 
 The allocate call returns a tuple containing the resulting positions used to plot the text labels and the connecting label lines.
