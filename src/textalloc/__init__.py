@@ -68,6 +68,7 @@ def allocate(
     seed: int = 0,
     direction: str = None,
     avoid_label_lines_overlap: bool = False,
+    avoid_crossing_label_lines: bool = False,
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
 ) -> Tuple[
@@ -107,6 +108,7 @@ def allocate(
         seed (int, optional): seeds order of text allocations. Defaults to 0.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
+        avoid_crossing_label_lines (bool, optional): If True, avoids crossing label lines. Defaults to False.
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
         **kwargs (): kwargs for the plt.text() call.
 
@@ -311,6 +313,7 @@ def allocate(
         direction,
         draw_lines,
         avoid_label_lines_overlap,
+        avoid_crossing_label_lines,
     )
 
     # Plot once again
