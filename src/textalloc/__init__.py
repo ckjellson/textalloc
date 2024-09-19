@@ -71,8 +71,8 @@ def allocate(
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
 ) -> Tuple[
-    List[Tuple[float, float]],
-    List[Tuple[Tuple[float, float], Tuple[float, float]]],
+    List[Tuple[float, float, float]],
+    List[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]]],
     List[object],
     List[object],
 ]:
@@ -111,8 +111,8 @@ def allocate(
         **kwargs (): kwargs for the plt.text() call.
 
     Returns:
-        result_text_xy (List[Tuple[float, float]]): List of resulting (x,y) positions for text labels used in the plt.text call.
-        result_lines (List[Tuple[float, float], Tuple[float, float]]): List of resulting (x,y) pairs used in the plt.plot call for drawing lines.
+        result_text_xy (List[Tuple[float, float, float]]): List of resulting (x,y, z) positions for text labels used in the plt.text call.
+        result_lines (List[Tuple[float, float, float], Tuple[float, float, float]]): List of resulting (x,y, z) pairs used in the plt.plot call for drawing lines.
         text_objects (List[plt.Text]): List of plt.Text objects from the plt.text calls.
         line_objects (List[plt.Line2D]): List of plt.Line2D objects from the plt.plot calls.
     """
