@@ -66,6 +66,7 @@ def allocate(
     linewidth: float = 1,
     textcolor: Union[str, List[str]] = "k",
     seed: int = 0,
+    prioritize_longest_texts: bool = False,
     direction: str = None,
     avoid_label_lines_overlap: bool = False,
     avoid_crossing_label_lines: bool = False,
@@ -106,6 +107,7 @@ def allocate(
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         seed (int, optional): seeds order of text allocations. Defaults to 0.
+        prioritize_longest_texts (bool, optional): If True, allocates the longest texts first. Defaults to False.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         avoid_crossing_label_lines (bool, optional): If True, avoids crossing label lines. Defaults to False.
@@ -314,6 +316,7 @@ def allocate(
         draw_lines,
         avoid_label_lines_overlap,
         avoid_crossing_label_lines,
+        prioritize_longest_texts
     )
 
     # Plot once again
