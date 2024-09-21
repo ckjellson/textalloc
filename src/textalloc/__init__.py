@@ -28,7 +28,7 @@ from textalloc.non_overlapping_boxes import (
 import numpy as np
 from mpl_toolkits.mplot3d import proj3d
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 
 try:
@@ -65,9 +65,8 @@ def allocate(
     nbr_candidates: int = 200,
     linewidth: float = 1,
     textcolor: Union[str, List[str]] = "k",
-    seed: int = 0,
-    prioritize_longest_texts: bool = False,
     direction: str = None,
+    priority_strategy: Union[int, str, Callable[[float, float], float]] = None,
     avoid_label_lines_overlap: bool = False,
     avoid_crossing_label_lines: bool = False,
     plot_kwargs: Dict[str, Any] = None,
@@ -106,9 +105,9 @@ def allocate(
         nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 200.
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
-        seed (int, optional): seeds order of text allocations. Defaults to 0.
-        prioritize_longest_texts (bool, optional): If True, allocates the longest texts first. Defaults to False.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
+        priority_strategy (Union[int, str, Callable[[float, float], float]], optional): Set priority strategy for greedy text allocation
+            (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better). Defaults to None, which keeps the order of the text_list.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         avoid_crossing_label_lines (bool, optional): If True, avoids crossing label lines. Defaults to False.
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
@@ -230,22 +229,6 @@ def allocate(
         "northwest",
     ]
 
-    # Seed
-    if seed > 0:
-        randinds = np.arange(x.shape[0])
-        np.random.seed(seed)
-        np.random.shuffle(randinds)
-        text_list = [text_list[i] for i in randinds]
-        x = x[randinds]
-        y = y[randinds]
-        if z is not None:
-            z = z[randinds]
-        if text_scatter_sizes is not None:
-            text_scatter_sizes = text_scatter_sizes[randinds]
-        textsize = [textsize[i] for i in randinds]
-        textcolor = [textcolor[i] for i in randinds]
-        linecolor = [linecolor[i] for i in randinds]
-
     # Create boxes in original plot
     if verbose:
         print("Creating boxes")
@@ -316,7 +299,7 @@ def allocate(
         draw_lines,
         avoid_label_lines_overlap,
         avoid_crossing_label_lines,
-        prioritize_longest_texts
+        priority_strategy
     )
 
     # Plot once again

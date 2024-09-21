@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Union, Callable, Dict
 from textalloc.candidates import generate_candidates
 from textalloc.overlap_functions import (
     non_overlapping_with_points,
@@ -37,6 +37,16 @@ except ImportError:
 
     def tqdm(iterator, *args, **kwargs):
         return iterator
+
+
+def priority_strategy_largest(w: float, h: float) -> float:
+    """Sort function for greedy text allocation."""
+    return max(w, h)
+
+
+PRIORITY_STRATEGIES: Dict[str, Callable[[float, float], float]] = {
+    "largest": priority_strategy_largest,
+}
 
 
 def get_non_overlapping_boxes(
@@ -59,7 +69,7 @@ def get_non_overlapping_boxes(
     draw_lines: bool,
     avoid_label_lines_overlap: bool,
     avoid_crossing_label_lines: bool,
-    prioritize_longest_texts: bool,
+    priority_strategy: Union[int, str, Callable[[float, float], float]],
 ) -> Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]:
     """Finds boxes that do not have an overlap with any other objects.
 
@@ -83,7 +93,8 @@ def get_non_overlapping_boxes(
         draw_lines (bool): draws lines from original points to textboxes.
         avoid_label_lines_overlap (bool): If True, avoids overlap with lines drawn between text labels and locations.
         avoid_crossing_label_lines (bool): If True, avoids crossing label lines.
-        prioritize_longest_texts (bool): If True, allocates longest texts first.
+        priority_strategy (Union[int, str, Callable[[float, float], float]], optional): Set priority strategy for greedy text allocation
+            (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better).
 
     Returns:
         Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]: data of non-overlapping boxes and indices of overlapping boxes.
@@ -107,10 +118,18 @@ def get_non_overlapping_boxes(
     if scatter_sizes is not None and scatter_xy is not None:
         assert len(scatter_sizes) == scatter_xy.shape[0]
 
-    if prioritize_longest_texts:
-        argsort_priority = np.argsort([-max(w, h) for (_, _, w, h, _) in original_boxes])
+    if priority_strategy is None:
+        argsort_priority = np.arange(len(original_boxes))
+    elif isinstance(priority_strategy, int):
+        argsort_priority = np.random.RandomState(priority_strategy).permutation(len(original_boxes))
     else:
-        argsort_priority = list(range(len(original_boxes)))
+        if isinstance(priority_strategy, str):
+            assert priority_strategy in PRIORITY_STRATEGIES, \
+                f"Unknown priority strategy: {priority_strategy}. Expected one of {list(PRIORITY_STRATEGIES.keys())}"
+            priority_strategy = PRIORITY_STRATEGIES[priority_strategy]
+        assert isinstance(priority_strategy, Callable), "Priority strategy must be callable"
+        argsort_priority = np.argsort([priority_strategy(w, h)
+                                       for (_, _, w, h, _) in original_boxes])[::-1]
 
     # Iterate original boxes and find ones that do not overlap by creating multiple candidates
     non_overlapping_boxes = []
