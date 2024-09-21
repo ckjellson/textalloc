@@ -343,7 +343,9 @@ def allocate(
     line_objects = []
     if draw_lines:
         for line in result_lines:
-            if line is not None:
+            if line is None:
+                line_objects.append(None)
+            else:
                 x_, y_, z_ = line
                 if z_ is not None:
                     line_objects.append(
@@ -414,7 +416,9 @@ def allocate(
     # Draw texts
     text_objects = []
     for ind, xyz in enumerate(result_text_xyz):
-        if xyz is not None:
+        if xyz is None:
+            text_objects.append(None)
+        else:
             if z is not None:
                 text_objects.append(
                     ax.text(
