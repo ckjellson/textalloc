@@ -131,13 +131,15 @@ linewidth: (float), default 1
     Width of line between textbox and it's origin.
 textcolor: (Union[str, List[str]]), default "k"
     Color code of the text.
-seed: (int), default 0
-    Seeds order of text allocations.
 direction: (str), default None
     Sets the preferred direction of the boxes with options:
     (south, north, east, west, northeast, northwest, southeast, southwest).
+priority_strategy: (Union[int, str, Callable[[float, float], float]]), default None
+    Sets priority strategy for text allocation (None / random seed / strategy name among ["largest"]).
 avoid_label_lines_overlap: (bool), default False
     If set to True, avoids overlap for drawn lines to text labels.
+avoid_crossing_label_lines: (bool), default False
+    If True, avoids crossing label lines.
 plot_kwargs: (dict), default None
     kwargs for the plt.plot of the lines if draw_lines is True.
 **kwargs: ()

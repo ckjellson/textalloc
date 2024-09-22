@@ -299,7 +299,7 @@ def allocate(
         draw_lines,
         avoid_label_lines_overlap,
         avoid_crossing_label_lines,
-        priority_strategy
+        priority_strategy,
     )
 
     # Plot once again

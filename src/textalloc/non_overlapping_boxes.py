@@ -28,7 +28,7 @@ from textalloc.overlap_functions import (
     non_overlapping_with_lines,
     non_overlapping_with_boxes,
     inside_plot,
-    line_intersect
+    line_intersect,
 )
 
 try:
@@ -121,15 +121,21 @@ def get_non_overlapping_boxes(
     if priority_strategy is None:
         argsort_priority = np.arange(len(original_boxes))
     elif isinstance(priority_strategy, int):
-        argsort_priority = np.random.RandomState(priority_strategy).permutation(len(original_boxes))
+        argsort_priority = np.random.RandomState(priority_strategy).permutation(
+            len(original_boxes)
+        )
     else:
         if isinstance(priority_strategy, str):
-            assert priority_strategy in PRIORITY_STRATEGIES, \
-                f"Unknown priority strategy: {priority_strategy}. Expected one of {list(PRIORITY_STRATEGIES.keys())}"
+            assert (
+                priority_strategy in PRIORITY_STRATEGIES
+            ), f"Unknown priority strategy: {priority_strategy}. Expected one of {list(PRIORITY_STRATEGIES.keys())}"
             priority_strategy = PRIORITY_STRATEGIES[priority_strategy]
-        assert isinstance(priority_strategy, Callable), "Priority strategy must be callable"
-        argsort_priority = np.argsort([priority_strategy(w, h)
-                                       for (_, _, w, h, _) in original_boxes])[::-1]
+        assert isinstance(
+            priority_strategy, Callable
+        ), "Priority strategy must be callable"
+        argsort_priority = np.argsort(
+            [priority_strategy(w, h) for (_, _, w, h, _) in original_boxes]
+        )[::-1]
 
     # Iterate original boxes and find ones that do not overlap by creating multiple candidates
     non_overlapping_boxes = []
@@ -214,18 +220,13 @@ def get_non_overlapping_boxes(
         else:
             assert cand_lines is not None
             assert previous_lines_xyxy is not None
-            non_cl = np.logical_not(np.any(line_intersect(cand_lines, previous_lines_xyxy), axis=-1))
+            non_cl = np.logical_not(
+                np.any(line_intersect(cand_lines, previous_lines_xyxy), axis=-1)
+            )
 
         # Validate
         ok_candidates = np.where(
-            np.bitwise_and.reduce(
-                (non_ol,
-                 non_op,
-                 non_orec,
-                 inside,
-                 non_oll,
-                 non_cl)
-            )
+            np.bitwise_and.reduce((non_ol, non_op, non_orec, inside, non_oll, non_cl))
         )[0]
         best_candidate = None
         if len(ok_candidates) > 0:
@@ -271,7 +272,11 @@ def get_non_overlapping_boxes(
                     overlapping_boxes_inds.append(i)
             else:
                 overlapping_boxes_inds.append(i)
-        if draw_lines and (avoid_label_lines_overlap or avoid_crossing_label_lines) and best_candidate is not None:
+        if (
+            draw_lines
+            and (avoid_label_lines_overlap or avoid_crossing_label_lines)
+            and best_candidate is not None
+        ):
             x_near, y_near = find_nearest_point_on_box(
                 best_candidate[0], best_candidate[1], w, h, x_original, y_original
             )
