@@ -28,7 +28,7 @@ from textalloc.non_overlapping_boxes import (
 import numpy as np
 from mpl_toolkits.mplot3d import proj3d
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 
 try:
@@ -65,14 +65,15 @@ def allocate(
     nbr_candidates: int = 200,
     linewidth: float = 1,
     textcolor: Union[str, List[str]] = "k",
-    seed: int = 0,
     direction: str = None,
+    priority_strategy: Union[int, str, Callable[[float, float], float]] = None,
     avoid_label_lines_overlap: bool = False,
+    avoid_crossing_label_lines: bool = False,
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
 ) -> Tuple[
-    List[Tuple[float, float]],
-    List[Tuple[Tuple[float, float], Tuple[float, float]]],
+    List[Tuple[float, float, float]],
+    List[Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]]],
     List[object],
     List[object],
 ]:
@@ -104,15 +105,17 @@ def allocate(
         nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 200.
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
-        seed (int, optional): seeds order of text allocations. Defaults to 0.
         direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
+        priority_strategy (Union[int, str, Callable[[float, float], float]], optional): Set priority strategy for greedy text allocation
+            (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better). Defaults to None, which keeps the order of the text_list.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
+        avoid_crossing_label_lines (bool, optional): If True, avoids crossing label lines. Defaults to False.
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
         **kwargs (): kwargs for the plt.text() call.
 
     Returns:
-        result_text_xy (List[Tuple[float, float]]): List of resulting (x,y) positions for text labels used in the plt.text call.
-        result_lines (List[Tuple[float, float], Tuple[float, float]]): List of resulting (x,y) pairs used in the plt.plot call for drawing lines.
+        result_text_xy (List[Tuple[float, float, float]]): List of resulting (x,y, z) positions for text labels used in the plt.text call.
+        result_lines (List[Tuple[float, float, float], Tuple[float, float, float]]): List of resulting (x,y, z) pairs used in the plt.plot call for drawing lines.
         text_objects (List[plt.Text]): List of plt.Text objects from the plt.text calls.
         line_objects (List[plt.Line2D]): List of plt.Line2D objects from the plt.plot calls.
     """
@@ -226,22 +229,6 @@ def allocate(
         "northwest",
     ]
 
-    # Seed
-    if seed > 0:
-        randinds = np.arange(x.shape[0])
-        np.random.seed(seed)
-        np.random.shuffle(randinds)
-        text_list = [text_list[i] for i in randinds]
-        x = x[randinds]
-        y = y[randinds]
-        if z is not None:
-            z = z[randinds]
-        if text_scatter_sizes is not None:
-            text_scatter_sizes = text_scatter_sizes[randinds]
-        textsize = [textsize[i] for i in randinds]
-        textcolor = [textcolor[i] for i in randinds]
-        linecolor = [linecolor[i] for i in randinds]
-
     # Create boxes in original plot
     if verbose:
         print("Creating boxes")
@@ -311,6 +298,8 @@ def allocate(
         direction,
         draw_lines,
         avoid_label_lines_overlap,
+        avoid_crossing_label_lines,
+        priority_strategy
     )
 
     # Plot once again
@@ -354,7 +343,9 @@ def allocate(
     line_objects = []
     if draw_lines:
         for line in result_lines:
-            if line is not None:
+            if line is None:
+                line_objects.append(None)
+            else:
                 x_, y_, z_ = line
                 if z_ is not None:
                     line_objects.append(
@@ -425,7 +416,9 @@ def allocate(
     # Draw texts
     text_objects = []
     for ind, xyz in enumerate(result_text_xyz):
-        if xyz is not None:
+        if xyz is None:
+            text_objects.append(None)
+        else:
             if z is not None:
                 text_objects.append(
                     ax.text(

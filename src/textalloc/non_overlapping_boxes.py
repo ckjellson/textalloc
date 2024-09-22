@@ -21,13 +21,14 @@
 # SOFTWARE.
 
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Union, Callable, Dict
 from textalloc.candidates import generate_candidates
 from textalloc.overlap_functions import (
     non_overlapping_with_points,
     non_overlapping_with_lines,
     non_overlapping_with_boxes,
     inside_plot,
+    line_intersect
 )
 
 try:
@@ -36,6 +37,16 @@ except ImportError:
 
     def tqdm(iterator, *args, **kwargs):
         return iterator
+
+
+def priority_strategy_largest(w: float, h: float) -> float:
+    """Sort function for greedy text allocation."""
+    return max(w, h)
+
+
+PRIORITY_STRATEGIES: Dict[str, Callable[[float, float], float]] = {
+    "largest": priority_strategy_largest,
+}
 
 
 def get_non_overlapping_boxes(
@@ -57,6 +68,8 @@ def get_non_overlapping_boxes(
     direction: str,
     draw_lines: bool,
     avoid_label_lines_overlap: bool,
+    avoid_crossing_label_lines: bool,
+    priority_strategy: Union[int, str, Callable[[float, float], float]],
 ) -> Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]:
     """Finds boxes that do not have an overlap with any other objects.
 
@@ -79,6 +92,9 @@ def get_non_overlapping_boxes(
         direction (str): set preferred direction of the boxes.
         draw_lines (bool): draws lines from original points to textboxes.
         avoid_label_lines_overlap (bool): If True, avoids overlap with lines drawn between text labels and locations.
+        avoid_crossing_label_lines (bool): If True, avoids crossing label lines.
+        priority_strategy (Union[int, str, Callable[[float, float], float]], optional): Set priority strategy for greedy text allocation
+            (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better).
 
     Returns:
         Tuple[List[Tuple[float, float, float, float, str, int]], List[int]]: data of non-overlapping boxes and indices of overlapping boxes.
@@ -96,18 +112,31 @@ def get_non_overlapping_boxes(
     ymaxdistance = ydiff * max_distance * aspect_ratio
 
     box_arr = np.zeros((0, 4))
-    non_overlapping_boxes = []
     has_text_scatter_sizes = text_scatter_sizes is not None
     if has_text_scatter_sizes:
         assert len(text_scatter_sizes) == len(original_boxes)
     if scatter_sizes is not None and scatter_xy is not None:
         assert len(scatter_sizes) == scatter_xy.shape[0]
 
+    if priority_strategy is None:
+        argsort_priority = np.arange(len(original_boxes))
+    elif isinstance(priority_strategy, int):
+        argsort_priority = np.random.RandomState(priority_strategy).permutation(len(original_boxes))
+    else:
+        if isinstance(priority_strategy, str):
+            assert priority_strategy in PRIORITY_STRATEGIES, \
+                f"Unknown priority strategy: {priority_strategy}. Expected one of {list(PRIORITY_STRATEGIES.keys())}"
+            priority_strategy = PRIORITY_STRATEGIES[priority_strategy]
+        assert isinstance(priority_strategy, Callable), "Priority strategy must be callable"
+        argsort_priority = np.argsort([priority_strategy(w, h)
+                                       for (_, _, w, h, _) in original_boxes])[::-1]
+
     # Iterate original boxes and find ones that do not overlap by creating multiple candidates
     non_overlapping_boxes = []
     overlapping_boxes_inds = []
-    for i, box in tqdm(enumerate(original_boxes), disable=not verbose):
-        x_original, y_original, w, h, s = box
+    previous_lines_xyxy = None
+    for i in tqdm(argsort_priority, disable=not verbose):
+        x_original, y_original, w, h, s = original_boxes[i]
         text_scatter_size = 0
         if has_text_scatter_sizes:
             text_scatter_size = text_scatter_sizes[i]
@@ -126,7 +155,7 @@ def get_non_overlapping_boxes(
         )
         # If overlap with drawn lines should be avoided, create cand_lines.
         cand_lines = None
-        if avoid_label_lines_overlap:
+        if avoid_label_lines_overlap or avoid_crossing_label_lines:
             for i_ in range(candidates.shape[0]):
                 x_near, y_near = find_nearest_point_on_box(
                     candidates[i_, 0],
@@ -171,21 +200,31 @@ def get_non_overlapping_boxes(
         else:
             non_orec = non_overlapping_with_boxes(box_arr, candidates, xmargin, ymargin)
         inside = inside_plot(xmin_bound, ymin_bound, xmax_bound, ymax_bound, candidates)
-        if cand_lines is None or box_arr.shape[0] == 0:
+
+        if not avoid_label_lines_overlap or box_arr.shape[0] == 0:
             non_oll = np.zeros((candidates.shape[0],)) == 0
         else:
+            assert cand_lines is not None
             non_oll = non_overlapping_with_lines(
                 cand_lines, box_arr, xmargin, ymargin, axis=0
             )
 
+        if not avoid_crossing_label_lines or box_arr.shape[0] == 0:
+            non_cl = np.zeros((candidates.shape[0],)) == 0
+        else:
+            assert cand_lines is not None
+            assert previous_lines_xyxy is not None
+            non_cl = np.logical_not(np.any(line_intersect(cand_lines, previous_lines_xyxy), axis=-1))
+
         # Validate
         ok_candidates = np.where(
-            np.bitwise_and(
-                non_ol,
-                np.bitwise_and(
-                    non_op,
-                    np.bitwise_and(non_orec, np.bitwise_and(inside, non_oll)),
-                ),
+            np.bitwise_and.reduce(
+                (non_ol,
+                 non_op,
+                 non_orec,
+                 inside,
+                 non_oll,
+                 non_cl)
             )
         )[0]
         best_candidate = None
@@ -232,16 +271,24 @@ def get_non_overlapping_boxes(
                     overlapping_boxes_inds.append(i)
             else:
                 overlapping_boxes_inds.append(i)
-        if draw_lines and avoid_label_lines_overlap and best_candidate is not None:
+        if draw_lines and (avoid_label_lines_overlap or avoid_crossing_label_lines) and best_candidate is not None:
             x_near, y_near = find_nearest_point_on_box(
                 best_candidate[0], best_candidate[1], w, h, x_original, y_original
             )
             if x_near is not None:
                 new_line = np.array([[x_near, y_near, x_original, y_original]])
-                if lines_xyxy is None:
-                    lines_xyxy = new_line
-                else:
-                    lines_xyxy = np.vstack([lines_xyxy, new_line])
+                if avoid_label_lines_overlap:
+                    if lines_xyxy is None:
+                        lines_xyxy = new_line
+                    else:
+                        lines_xyxy = np.vstack([lines_xyxy, new_line])
+
+                if avoid_crossing_label_lines:
+                    if previous_lines_xyxy is None:
+                        previous_lines_xyxy = new_line
+                    else:
+                        previous_lines_xyxy = np.vstack([previous_lines_xyxy, new_line])
+
     return non_overlapping_boxes, overlapping_boxes_inds
 
 
