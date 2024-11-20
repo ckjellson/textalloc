@@ -377,6 +377,12 @@ def allocate(
                 x_coord += w / 2
             elif kwargs.get("ha") == "right":
                 x_coord += w
+        if kwargs.get("va", None) is not None:
+            if kwargs.get("va") == "center":
+                y_coord += h / 2
+            elif kwargs.get("va") == "top":
+                y_coord += h
+
         if z is not None:
             x_coord, y_coord, z_coord = display_to_data(
                 [x_coord],
