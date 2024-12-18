@@ -140,6 +140,10 @@ avoid_label_lines_overlap: (bool), default False
     If set to True, avoids overlap for drawn lines to text labels.
 avoid_crossing_label_lines: (bool), default False
     If True, avoids crossing label lines.
+xlims: (Tuple[float, float], optional), default ax.get_xlim()
+    x-axis limits of the plot.
+ylims: (Tuple[float, float], optional), default ax.get_ylim()
+    y-axis limits of the plot.
 plot_kwargs: (dict), default None
     kwargs for the plt.plot of the lines if draw_lines is True.
 **kwargs: ()
