@@ -69,6 +69,8 @@ def allocate(
     priority_strategy: Union[int, str, Callable[[float, float], float]] = None,
     avoid_label_lines_overlap: bool = False,
     avoid_crossing_label_lines: bool = False,
+    xlims: Tuple[float, float] = None,
+    ylims: Tuple[float, float] = None,
     plot_kwargs: Dict[str, Any] = None,
     **kwargs,
 ) -> Tuple[
@@ -110,6 +112,8 @@ def allocate(
             (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better). Defaults to None, which keeps the order of the text_list.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         avoid_crossing_label_lines (bool, optional): If True, avoids crossing label lines. Defaults to False.
+        xlims (Tuple[float, float], optional): x-axis limits of the plot. Defaults to ax.get_xlim().
+        ylims (Tuple[float, float], optional): y-axis limits of the plot. Defaults to ax.get_ylim().
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
         **kwargs (): kwargs for the plt.text() call.
 
@@ -128,8 +132,10 @@ def allocate(
             plot_kwargs = {}
         plot_kwargs["transform"] = kwargs.get("transform")
     aspect_ratio = fig.get_size_inches()[0] / fig.get_size_inches()[1]
-    xlims = ax.get_xlim()
-    ylims = ax.get_ylim()
+    if xlims is None:
+        xlims = ax.get_xlim()
+    if ylims is None:
+        ylims = ax.get_ylim()
     if z is not None:
         # In case of a 3D plot the limits are fixed here to avoid projection issues further down.
         zlims = ax.get_zlim()
