@@ -348,7 +348,7 @@ def allocate(
     # Draw lines
     line_objects = []
     if draw_lines:
-        for line in result_lines:
+        for ind, line in enumerate(result_lines):
             if line is None:
                 line_objects.append(None)
             else:
