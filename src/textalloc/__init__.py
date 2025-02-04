@@ -69,6 +69,7 @@ def allocate(
     priority_strategy: Union[int, str, Callable[[float, float], float]] = None,
     avoid_label_lines_overlap: bool = False,
     avoid_crossing_label_lines: bool = False,
+    auto_ha: bool = True,
     xlims: Tuple[float, float] = None,
     ylims: Tuple[float, float] = None,
     plot_kwargs: Dict[str, Any] = None,
@@ -112,6 +113,7 @@ def allocate(
             (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better). Defaults to None, which keeps the order of the text_list.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
         avoid_crossing_label_lines (bool, optional): If True, avoids crossing label lines. Defaults to False.
+        auto_ha (bool, optional): If True, horizontally aligns text dependent on location relative to it's x and y coordinate. Defaults to True.
         xlims (Tuple[float, float], optional): x-axis limits of the plot. Defaults to ax.get_xlim().
         ylims (Tuple[float, float], optional): y-axis limits of the plot. Defaults to ax.get_ylim().
         plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
@@ -377,12 +379,24 @@ def allocate(
 
     # Get texts
     result_text_xyz: List[Optional[Tuple[float, float]]] = [None] * len(text_list)
+    auto_ha_vals = [None] * len(text_list)
     for x_coord, y_coord, w, h, s, ind in non_overlapping_boxes:
-        if kwargs.get("ha", None) is not None:
-            if kwargs.get("ha") == "center":
+        if auto_ha:
+            # Only center if the x coordinate overlaps with the middle 50% of the box.
+            if x_coord + w / 4 < x[ind] and x_coord + 3 / 4 * w > x[ind]:
+                auto_ha_vals[ind] = "center"
                 x_coord += w / 2
-            elif kwargs.get("ha") == "right":
+            elif x_coord + 3 / 4 * w > x[ind]:
+                auto_ha_vals[ind] = "left"
+            else:
+                auto_ha_vals[ind] = "right"
                 x_coord += w
+        else:
+            if kwargs.get("ha", None) is not None:
+                if kwargs.get("ha") == "center":
+                    x_coord += w / 2
+                elif kwargs.get("ha") == "right":
+                    x_coord += w
         if kwargs.get("va", None) is not None:
             if kwargs.get("va") == "center":
                 y_coord += h / 2
@@ -431,6 +445,8 @@ def allocate(
         if xyz is None:
             text_objects.append(None)
         else:
+            if auto_ha and auto_ha_vals[ind] is not None:
+                kwargs["ha"] = auto_ha_vals[ind]
             if z is not None:
                 text_objects.append(
                     ax.text(

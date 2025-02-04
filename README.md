@@ -140,6 +140,8 @@ avoid_label_lines_overlap: (bool), default False
     If set to True, avoids overlap for drawn lines to text labels.
 avoid_crossing_label_lines: (bool), default False
     If True, avoids crossing label lines.
+auto_align: (bool), default True
+    If True, horizontally aligns text dependent on location relative to it's x and y coordinate.
 xlims: (Tuple[float, float], optional), default ax.get_xlim()
     x-axis limits of the plot.
 ylims: (Tuple[float, float], optional), default ax.get_ylim()
