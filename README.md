@@ -105,6 +105,8 @@ text_scatter_sizes: (array-like), default None
     sizes of text scattered objects in plot list of 1d arrays/lists.
 textsize: (Union[int, List[int]]), default 10
     Size of text.
+fontweight: (Union[int, str, List[int], List[str]]), default'normal'
+    Weight of text font
 margin: (float), default 0.0
     Parameter for margins between objects. Recommendation: keep this lower than min_distance.
     Increase for larger margins to points and lines.
