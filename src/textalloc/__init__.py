@@ -55,6 +55,7 @@ def allocate(
     scatter_plot: object = None,
     text_scatter_sizes: List[Union[np.ndarray, List[float]]] = None,
     textsize: Union[int, float, List[int], List[float]] = 10,
+    fontweight: Union[int, str, List[int], List[str]] = 'normal',
     margin: float = 0.008,
     min_distance: float = 0.013,
     max_distance: float = 0.2,
@@ -98,6 +99,7 @@ def allocate(
         scatter_plot (__type__, optional): if possible, provide a scatterplot object (scatter_plot=ax.scatter(...)) for more exact placement. Defaults to None.
         text_scatter_sizes (List[Union[np.ndarray, List[float]]], optional): sizes of text scattered objects in plot list of 1d arrays/lists. Defaults to None.
         textsize (Union[int, float, List[int], List[float]], optional): size of text. Defaults to 10.
+        fontweight (Union[int, str, List[int], List[str]], optional): fontweight of text. Defaults to 'normal'.
         margin (float, optional): parameter for margins between objects. Increase for larger margins to points and lines. Defaults to 0.008.
         min_distance (float, optional): parameter for min distance between text and origin. Defaults to 0.015.
         max_distance (float, optional): parameter for max distance between text and origin. Defaults to 0.2.
@@ -217,6 +219,10 @@ def allocate(
         assert len(textsize) == len(x)
     else:
         textsize = [textsize for _ in range(len(x))]
+    if isinstance(fontweight, list):
+        assert len(fontweight) == len(fontweight)
+    else:
+        fontweight = [fontweight for _ in range(len(x))]
     if type(textcolor) is not str:
         assert len(textcolor) == len(x)
     else:
@@ -244,7 +250,7 @@ def allocate(
     for i in tqdm(range(len(x)), disable=not verbose):
         ann = None
         if z is not None:
-            ann = ax.text(x[i], y[i], z[i], text_list[i], size=textsize[i], **kwargs)
+            ann = ax.text(x[i], y[i], z[i], text_list[i], size=textsize[i], fontweight=fontweight[i], **kwargs)
             x_, y_, z_ = data_to_display(
                 [x[i]],
                 [y[i]],
@@ -253,7 +259,7 @@ def allocate(
                 transform=kwargs.get("transform", None),
             )
         else:
-            ann = ax.text(x[i], y[i], text_list[i], size=textsize[i], **kwargs)
+            ann = ax.text(x[i], y[i], text_list[i], size=textsize[i], fontweight=fontweight[i], **kwargs)
             x_, y_, z_ = data_to_display(
                 [x[i]], [y[i]], None, ax, transform=kwargs.get("transform", None)
             )
@@ -455,6 +461,7 @@ def allocate(
                         xyz[2],
                         text_list[ind],
                         size=textsize[ind],
+                        fontweight=fontweight[ind],
                         c=textcolor[ind],
                         **kwargs,
                     )
@@ -466,6 +473,7 @@ def allocate(
                         xyz[1],
                         text_list[ind],
                         size=textsize[ind],
+                        fontweight=fontweight[ind],
                         c=textcolor[ind],
                         **kwargs,
                     )
