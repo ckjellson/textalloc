@@ -249,6 +249,7 @@ def allocate(
     if verbose:
         print("Creating boxes")
     original_boxes = []
+    renderer = _get_renderer(fig)
     for i in tqdm(range(len(x)), disable=not verbose):
         ann = None
         if z is not None:
@@ -265,7 +266,6 @@ def allocate(
             x_, y_, z_ = data_to_display(
                 [x[i]], [y[i]], None, ax, transform=kwargs.get("transform", None)
             )
-        renderer = _get_renderer(fig)
         box = ann.get_window_extent(renderer=renderer)
         w, h = box.x1 - box.x0, box.y1 - box.y0
         if z_ is not None:
