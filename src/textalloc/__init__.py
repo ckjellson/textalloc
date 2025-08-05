@@ -30,7 +30,8 @@ from mpl_toolkits.mplot3d import proj3d
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
-import matplotlib as mpl
+from matplotlib.figure import Figure
+from matplotlib.backend_bases import RendererBase
 
 try:
     from tqdm import tqdm
@@ -607,7 +608,7 @@ def get_scatter_bbs(sc, ax) -> np.ndarray:
 
 
 # Based on https://stackoverflow.com/questions/22667224/get-text-bounding-box-independent-of-backend/
-def _get_renderer(fig: mpl.figure.Figure) -> mpl.backend_bases.RendererBase:
+def _get_renderer(fig: Figure) -> RendererBase:
     if hasattr(fig, '_cachedRenderer') and fig._cachedRenderer is not None:
         return fig._cachedRenderer
     if hasattr(fig, "_get_renderer"):
