@@ -30,6 +30,8 @@ from mpl_toolkits.mplot3d import proj3d
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
+from matplotlib.figure import Figure
+from matplotlib.backend_bases import RendererBase
 
 try:
     from tqdm import tqdm
@@ -247,6 +249,7 @@ def allocate(
     if verbose:
         print("Creating boxes")
     original_boxes = []
+    renderer = _get_renderer(fig)
     for i in tqdm(range(len(x)), disable=not verbose):
         ann = None
         if z is not None:
@@ -263,7 +266,7 @@ def allocate(
             x_, y_, z_ = data_to_display(
                 [x[i]], [y[i]], None, ax, transform=kwargs.get("transform", None)
             )
-        box = ann.get_window_extent(fig.canvas.get_renderer())
+        box = ann.get_window_extent(renderer=renderer)
         w, h = box.x1 - box.x0, box.y1 - box.y0
         if z_ is not None:
             original_boxes.append((x_[0], y_[0], w, h, textsize[i]))
@@ -602,3 +605,20 @@ def get_scatter_bbs(sc, ax) -> np.ndarray:
             bboxes.append(result.bounds)
 
     return np.array(bboxes)
+
+
+# Based on https://stackoverflow.com/questions/22667224/get-text-bounding-box-independent-of-backend/
+def _get_renderer(fig: Figure) -> RendererBase:
+    if hasattr(fig, '_cachedRenderer') and fig._cachedRenderer is not None:
+        return fig._cachedRenderer
+    if hasattr(fig, "_get_renderer"):
+        renderer = fig._get_renderer()
+        if renderer is not None:
+            return renderer
+    if hasattr(fig.canvas, "get_renderer"):
+        renderer = fig.canvas.get_renderer()
+        if renderer is not None:
+            return renderer
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    canvas = FigureCanvasAgg(fig)
+    return canvas.get_renderer()
