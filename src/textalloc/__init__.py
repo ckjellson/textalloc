@@ -32,6 +32,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import warnings
 from matplotlib.figure import Figure
 from matplotlib.backend_bases import RendererBase
+from packaging.version import Version
+import matplotlib
 
 try:
     from tqdm import tqdm
@@ -554,7 +556,11 @@ def display_to_data(x, y, z, ax, transform=None):
             p = transform._as_mpl_transform(ax).inverted().transform_point((x[i], y[i]))
         elif z is not None:
             x_, y_ = ax.transData.inverted().transform((x[i], y[i]))
-            p = proj3d.inv_transform(x_, y_, z[i], ax.get_proj())
+            if Version(matplotlib.__version__)>Version("3.7.0"):
+                p = proj3d.inv_transform(x_, y_, z[i], np.linalg.inv(ax.get_proj()))
+                p = (float(p[0][0]), float(p[1][0]), float(p[2][0]))
+            else:
+                p = proj3d.inv_transform(x_, y_, z[i], ax.get_proj())
         else:
             p = ax.transData.inverted().transform((x[i], y[i]))
         xtrans.append(p[0])
