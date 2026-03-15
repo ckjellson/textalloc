@@ -65,7 +65,7 @@ def get_non_overlapping_boxes(
     scatter_sizes: np.ndarray,
     scatter_plot_bbs: np.ndarray,
     text_scatter_sizes: np.ndarray,
-    direction: str,
+    direction: List[str],
     draw_lines: bool,
     avoid_label_lines_overlap: bool,
     avoid_crossing_label_lines: bool,

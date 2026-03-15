@@ -25,6 +25,7 @@ from textalloc.non_overlapping_boxes import (
     get_non_overlapping_boxes,
     find_nearest_point_on_box,
 )
+from textalloc.candidates import direction_to_dir
 import numpy as np
 from mpl_toolkits.mplot3d import proj3d
 import time
@@ -70,7 +71,7 @@ def allocate(
     nbr_candidates: int = 200,
     linewidth: float = 1,
     textcolor: Union[str, List[str]] = "k",
-    direction: str = None,
+    direction: Union[str, List[str]] = None,
     priority_strategy: Union[int, str, Callable[[float, float], float]] = None,
     avoid_label_lines_overlap: bool = False,
     avoid_crossing_label_lines: bool = False,
@@ -114,7 +115,7 @@ def allocate(
         nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 200.
         linewidth (float, optional): width of line. Defaults to 1.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
-        direction (str, optional): set preferred location of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
+        direction (Union[str, List[str]], optional): set preferred directions of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
         priority_strategy (Union[int, str, Callable[[float, float], float]], optional): Set priority strategy for greedy text allocation
             (None / random seed / strategy name among ["largest"] / priority score of a box (width, height), the larger the better). Defaults to None, which keeps the order of the text_list.
         avoid_label_lines_overlap (bool, optional): If True, avoids overlap with lines drawn between text labels and locations. Defaults to False.
@@ -235,17 +236,11 @@ def allocate(
         assert len(linecolor) == len(x)
     else:
         linecolor = [linecolor for _ in range(len(x))]
-    assert direction in [
-        None,
-        "south",
-        "north",
-        "east",
-        "west",
-        "southeast",
-        "southwest",
-        "northeast",
-        "northwest",
-    ]
+    if type(direction) is str:
+        direction = [direction]
+    if direction is not None:
+        for d in direction:
+            assert d in list(direction_to_dir.keys())
 
     # Create boxes in original plot
     if verbose:

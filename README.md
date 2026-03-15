@@ -133,8 +133,8 @@ linewidth: (float), default 1
     Width of line between textbox and it's origin.
 textcolor: (Union[str, List[str]]), default "k"
     Color code of the text.
-direction: (str), default None
-    Sets the preferred direction of the boxes with options:
+direction: (Union[str, List[str]]), default None
+    Sets the preferred directions of the boxes with options:
     (south, north, east, west, northeast, northwest, southeast, southwest).
 priority_strategy: (Union[int, str, Callable[[float, float], float]]), default None
     Sets priority strategy for text allocation (None / random seed / strategy name among ["largest"]).
