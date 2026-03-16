@@ -76,10 +76,10 @@ def generate_candidates(
     candidates1 = None
     if direction is not None:
         candidates1 = []
-        for d in direction:
-            dir = direction_to_dir[d]
-            dir_cands = []
-            for i in range(1, 10):
+        for i in range(1, 10):
+            i_cands = []
+            for d in direction:
+                dir = direction_to_dir[d]
                 if dir[0] == -1:
                     x_ = x - w - xmindistance * i
                 elif dir[0] == 0:
@@ -92,8 +92,8 @@ def generate_candidates(
                     y_ = y - h / 2
                 elif dir[1] == 1:
                     y_ = y + ymindistance * i
-                dir_cands.append([x_, y_, x_ + w, y_ + h])
-            candidates1.append(np.array(dir_cands))
+                i_cands.append([x_, y_, x_ + w, y_ + h])
+            candidates1.append(np.array(i_cands))
         candidates1 = np.vstack(candidates1)
 
     candidates = np.array(
@@ -196,46 +196,39 @@ def generate_candidates(
 
     if direction is not None:
         final_candidates = []
+        mask = candidates[:, 1] > 1e10
         for d in direction:
             if d == "south":
-                final_candidates.append(candidates[(candidates[:, 1] < y) & (candidates[:, 3] < y), :])
+                mask[(candidates[:, 1] < y) & (candidates[:, 3] < y)] = True
             elif d == "north":
-                final_candidates.append(candidates[(candidates[:, 1] > y) & (candidates[:, 3] > y), :])
+                mask[(candidates[:, 1] > y) & (candidates[:, 3] > y)] = True
             elif d == "west":
-                final_candidates.append(candidates[(candidates[:, 0] < x) & (candidates[:, 2] < x), :])
+                mask[(candidates[:, 0] < x) & (candidates[:, 2] < x)] = True
             elif d == "east":
-                final_candidates.append(candidates[(candidates[:, 0] > x) & (candidates[:, 2] > x), :])
+                mask[(candidates[:, 0] > x) & (candidates[:, 2] > x)] = True
             elif d == "southwest":
-                final_candidates.append(candidates[
+                mask[
                     (candidates[:, 1] < y)
                     & (candidates[:, 3] < y)
                     & (candidates[:, 0] < x)
-                    & (candidates[:, 2] < x),
-                    :,
-                ])
+                    & (candidates[:, 2] < x)] = True
             elif d == "southeast":
-                final_candidates.append(candidates[
+                mask[
                     (candidates[:, 1] < y)
                     & (candidates[:, 3] < y)
                     & (candidates[:, 0] > x)
-                    & (candidates[:, 2] > x),
-                    :,
-                ])
+                    & (candidates[:, 2] > x)] = True
             elif d == "northwest":
-                final_candidates.append(candidates[
+                mask[
                     (candidates[:, 1] > y)
                     & (candidates[:, 3] > y)
                     & (candidates[:, 0] < x)
-                    & (candidates[:, 2] < x),
-                    :,
-                ])
+                    & (candidates[:, 2] < x)] = True
             elif d == "northeast":
-                final_candidates.append(candidates[
+                mask[
                     (candidates[:, 1] > y)
                     & (candidates[:, 3] > y)
                     & (candidates[:, 0] > x)
-                    & (candidates[:, 2] > x),
-                    :,
-                ])
-        candidates = np.vstack(final_candidates)
+                    & (candidates[:, 2] > x)] = True
+        candidates = candidates[mask,:]
     return candidates
