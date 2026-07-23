@@ -70,6 +70,7 @@ def allocate(
     draw_all: bool = True,
     nbr_candidates: int = 200,
     linewidth: float = 1,
+    linezorder: float = None,
     textcolor: Union[str, List[str]] = "k",
     direction: Union[str, List[str]] = None,
     priority_strategy: Union[int, str, Callable[[float, float], float]] = None,
@@ -114,6 +115,7 @@ def allocate(
         draw_all (bool, optional): Draws all texts after allocating as many as possible despit overlap. Defaults to True.
         nbr_candidates (int, optional): Sets the number of candidates used. Defaults to 200.
         linewidth (float, optional): width of line. Defaults to 1.
+        linezorder (float, optional): zorder of the lines between points and text-boxes. Defaults to None, which resolves to a value below the point's zorder so the point visually caps the line.
         textcolor (Union[str, List[str]], optional): color code of the text. Defaults to "k".
         direction (Union[str, List[str]], optional): set preferred directions of the boxes (south, north, east, west, northeast, northwest, southeast, southwest). Defaults to None.
         priority_strategy (Union[int, str, Callable[[float, float], float]], optional): Set priority strategy for greedy text allocation
@@ -123,7 +125,7 @@ def allocate(
         auto_ha (bool, optional): If True, horizontally aligns text dependent on location relative to it's x and y coordinate. Defaults to True.
         xlims (Tuple[float, float], optional): x-axis limits of the plot. Defaults to ax.get_xlim().
         ylims (Tuple[float, float], optional): y-axis limits of the plot. Defaults to ax.get_ylim().
-        plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
+        plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True. Can override linewidth, color, and zorder.
         **kwargs (): kwargs for the plt.text() call.
 
     Returns:
@@ -280,6 +282,12 @@ def allocate(
         scatter_plot_bbs = get_scatter_bbs(scatter_plot, ax)
         scatter_plot_bbs[:, 2] = scatter_plot_bbs[:, 0] + scatter_plot_bbs[:, 2]
         scatter_plot_bbs[:, 3] = scatter_plot_bbs[:, 1] + scatter_plot_bbs[:, 3]
+    if linezorder is None:
+        # Below matplotlib's default zorder for scatter/patch collections (1), so the
+        # point marker is drawn on top of and visually caps the line where it meets it.
+        linezorder = 0.9
+        if scatter_plot is not None:
+            linezorder = min(linezorder, scatter_plot.get_zorder() - 0.1)
 
     # Process extracted textboxes
     if verbose:
@@ -361,27 +369,15 @@ def allocate(
                 line_objects.append(None)
             else:
                 x_, y_, z_ = line
+                line_kwargs = dict(
+                    linewidth=linewidth, c=linecolor[ind], zorder=linezorder
+                )
+                if plot_kwargs is not None:
+                    line_kwargs.update(plot_kwargs)
                 if z_ is not None:
-                    line_objects.append(
-                        ax.plot(
-                            x_,
-                            y_,
-                            z_,
-                            linewidth=linewidth,
-                            c=linecolor[ind],
-                            **(plot_kwargs if plot_kwargs is not None else {}),
-                        )[0]
-                    )
+                    line_objects.append(ax.plot(x_, y_, z_, **line_kwargs)[0])
                 else:
-                    line_objects.append(
-                        ax.plot(
-                            x_,
-                            y_,
-                            linewidth=linewidth,
-                            c=linecolor[ind],
-                            **(plot_kwargs if plot_kwargs is not None else {}),
-                        )[0]
-                    )
+                    line_objects.append(ax.plot(x_, y_, **line_kwargs)[0])
 
     # Get texts
     result_text_xyz: List[Optional[Tuple[float, float]]] = [None] * len(text_list)
