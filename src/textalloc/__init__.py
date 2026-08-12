@@ -123,7 +123,7 @@ def allocate(
         auto_ha (bool, optional): If True, horizontally aligns text dependent on location relative to it's x and y coordinate. Defaults to True.
         xlims (Tuple[float, float], optional): x-axis limits of the plot. Defaults to ax.get_xlim().
         ylims (Tuple[float, float], optional): y-axis limits of the plot. Defaults to ax.get_ylim().
-        plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True.
+        plot_kwargs (dict, optional): kwargs for the plt.plot of the lines if draw_lines is True. Can override linewidth, color, and zorder (lines default to a zorder just below the scatter point's, so the point is drawn on top of the line).
         **kwargs (): kwargs for the plt.text() call.
 
     Returns:
@@ -280,6 +280,12 @@ def allocate(
         scatter_plot_bbs = get_scatter_bbs(scatter_plot, ax)
         scatter_plot_bbs[:, 2] = scatter_plot_bbs[:, 0] + scatter_plot_bbs[:, 2]
         scatter_plot_bbs[:, 3] = scatter_plot_bbs[:, 1] + scatter_plot_bbs[:, 3]
+    # Default the line's zorder below matplotlib's default zorder for scatter/patch
+    # collections (1), so the point marker is drawn on top of and visually caps the
+    # line where it meets it. Override via plot_kwargs={"zorder": ...} if needed.
+    line_zorder = 0.9
+    if scatter_plot is not None:
+        line_zorder = min(line_zorder, scatter_plot.get_zorder() - 0.1)
 
     # Process extracted textboxes
     if verbose:
@@ -361,27 +367,15 @@ def allocate(
                 line_objects.append(None)
             else:
                 x_, y_, z_ = line
+                line_kwargs = dict(
+                    linewidth=linewidth, c=linecolor[ind], zorder=line_zorder
+                )
+                if plot_kwargs is not None:
+                    line_kwargs.update(plot_kwargs)
                 if z_ is not None:
-                    line_objects.append(
-                        ax.plot(
-                            x_,
-                            y_,
-                            z_,
-                            linewidth=linewidth,
-                            c=linecolor[ind],
-                            **(plot_kwargs if plot_kwargs is not None else {}),
-                        )[0]
-                    )
+                    line_objects.append(ax.plot(x_, y_, z_, **line_kwargs)[0])
                 else:
-                    line_objects.append(
-                        ax.plot(
-                            x_,
-                            y_,
-                            linewidth=linewidth,
-                            c=linecolor[ind],
-                            **(plot_kwargs if plot_kwargs is not None else {}),
-                        )[0]
-                    )
+                    line_objects.append(ax.plot(x_, y_, **line_kwargs)[0])
 
     # Get texts
     result_text_xyz: List[Optional[Tuple[float, float]]] = [None] * len(text_list)
